@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      1.5
+// @version      1.51
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -53,7 +53,7 @@
       }, false);
       illust.appendChild(exClose.cloneNode(true));
     });
-    exClose.insertAdjacentHTML('aftereend', '<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
+    exClose.insertAdjacentHTML('afterEnd', '<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
     exView.onchange = async e => (exView.checked ? doc.querySelector('.popup_illust') : illust).scrollIntoView();
   }
   if (document.readyState == 'loading') {
