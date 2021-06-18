@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      1.4
+// @version      1.5
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -39,7 +39,6 @@
     const viewCenter = document.querySelector('#view-center-block');
     viewCenter.insertAdjacentHTML('afterbegin', '<input id="exView" type="checkbox">');
     const illust = viewCenter.querySelector('#illust');
-    illust.insertAdjacentHTML('beforeend', '<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
     illust.insertAdjacentHTML('beforeend', '<label class="ex-close" for="exView"><i class="fa fa-angle-up"></i><label>');
     const exView = viewCenter.querySelector('#exView');
     const exClose = illust.querySelector('.ex-close');
@@ -54,7 +53,8 @@
       }, false);
       illust.appendChild(exClose.cloneNode(true));
     });
-    exView.onchange = async e => (exView.checked ? imgs[0] : illust).scrollIntoView();
+    exClose.insertAdjacentHTML('aftereend', '<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
+    exView.onchange = async e => (exView.checked ? doc.querySelector('.popup_illust') : illust).scrollIntoView();
   }
   if (document.readyState == 'loading') {
     document.addEventListener('DOMContentLoaded', main);
