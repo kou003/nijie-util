@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      1.0
+// @version      1.1
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -14,8 +14,7 @@
 {
   'use strict';
   const main = async () => {
-    const style = document.head.appendChild(document.createElement('style'));
-    style.textContent=`
+    document.head.appendChild(document.createElement('style')).textContent=`
     #exView {
       display: none;
     }
