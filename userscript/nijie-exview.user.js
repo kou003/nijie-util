@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      1.1
+// @version      1.2
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -14,7 +14,7 @@
 {
   'use strict';
   const main = async () => {
-    document.head.appendChild(document.createElement('style')).textContent=`
+    document.head.appendChild(document.createElement('style')).textContent = `
     #exView {
       display: none;
     }
@@ -33,21 +33,19 @@
     illust.insertAdjacentHTML('beforeend', '<label class="ex-close" for="exView"><i class="fa fa-angle-up"></i><label>');
     const exView = illust.querySelector('#exView');
     const exClose = illust.querySelector('.ex-close');
-    exView.onchange = async e => {
-      exView.onchange=e=>(exView.checked ? illust.querySelector('.popup_illust') : illust).scrollIntoView();
-      const url = location.href.replace('view.php', 'view_popup.php');
-      const text = await fetch(url).then(r=>r.text());
-      const doc = new DOMParser().parseFromString(text, 'text/html');
-      const imgs = doc.querySelectorAll('.popup_illust');
-      imgs.forEach(img => {
-        illust.appendChild(img);
-        img.addEventListener('click', (e,i)=>{
-          imgs[(i+1)%imgs.length].scrollIntoView();
-        }, false);
-        illust.appendChild(exClose.cloneNode(true));
-      });
-      imgs[0].scrollIntoView();
-    }
+    const url = location.href.replace('view.php', 'view_popup.php');
+    const text = await fetch(url).then(r => r.text());
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const imgs = doc.querySelectorAll('.popup_illust');
+    imgs.forEach((img, i) => {
+      illust.appendChild(img);
+      img.addEventListener('click', e => {
+        imgs[(i + 1) % imgs.length].scrollIntoView();
+      }, false);
+      illust.appendChild(exClose.cloneNode(true));
+    });
+    imgs[0].scrollIntoView();
+    exView.onchange = async e => (exView.checked ? imgs[0] : illust).scrollIntoView();
   }
   if (document.readyState == 'loading') {
     document.addEventListener('DOMContentLoaded', main);
