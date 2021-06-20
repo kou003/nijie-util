@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.1
+// @version      3.2
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -91,6 +91,10 @@
     const old = document.querySelector('#illust');
     if (!old) return;
     const illust = element.create('<div id="_illust" />');
+    const label = element.create('<label for="exView" />');
+    const img = old.querySelector('a img');
+    img.replaceWith(label);
+    label.appendChild(img);
     illust.replaceChildren(...old.children);
     old.replaceWith(illust);
     illust.addEventListener("touchstart", event => {
@@ -103,7 +107,7 @@
       moveY = event.changedTouches[0].clientY;
       moveT = event.timeStamp;
     });
-    illust.addEventListener("touchend", function () {
+    illust.addEventListener("touchend", event => {
       let diffX = moveX - startX;
       let diffY = moveY - startY;
       let diffT = moveT - startT;
@@ -163,7 +167,6 @@
     document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
     const viewCenter = document.body.querySelector('#view-center-block');
     const illust = viewCenter.querySelector('#_illust');
-    illust.querySelector('a').onclick = e => !!e.preventDefault();
     const exView = element.create('<input id="exView" type="checkbox" disabled>');
     viewCenter.insertAdjacentElement('afterbegin', exView);
     const exOpen = element.create('<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
