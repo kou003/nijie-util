@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.41
+// @version      3.5
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -42,7 +42,7 @@
       box-sizing: border-box;
     }
     
-    #view-image-block #_illust img {
+    #view-image-block #illust img {
       max-width: 100%;
     }
 
@@ -56,27 +56,35 @@
     .popup_illust {
       display: none;
     }
-    #exView:checked~#_illust .ex-close {
+    #exView:checked~#illust .ex-close {
       display: block;
     }
-    #exView:checked ~ #_illust .popup_illust {
+    #exView:checked ~ #illust .popup_illust {
       display: inline;
     }
-    #exView:checked ~ div:not(#_illust),
-    #exView:checked ~ #_illust a,
-    #exView:checked ~ #_illust .ex-open {
+    #exView:checked ~ div:not(#illust),
+    #exView:checked ~ #illust a,
+    #exView:checked ~ #illust .ex-open {
       display: none;
     }
 
-    #_illust {
+    #illust {
       counter-reset: num 0 total var(--total);
     }
-    #_illust .ex-open::after {
+    #illust .ex-open::after {
       content: " (" counter(total) ")";
     }
-    #_illust .ex-close::after {
+    #illust .ex-close::after {
       counter-increment: num;
       content: " (" counter(num) " / " counter(total) ")";
+    }
+
+    .illust-layout {
+      width: calc(100vw/3) !important;
+      height: calc(100vw/3) !important;
+    }
+    .illust-layout div.illust-image {
+      width: 100% !important;
     }
     `
   }
@@ -96,18 +104,15 @@
     let moveY;
     let startT;
     let moveT;
-    const dist = 100;
+    const dist = 80;
     const maxSlope = 0.5;
     const minSpeed = 0.5;
-    const old = document.querySelector('#illust');
-    if (!old) return;
-    const illust = element.create('<div id="_illust" />');
+    const illust = document.querySelector('#illust');
+    if (!illust) return;
     const label = element.create('<label for="exView" />');
-    const a = old.querySelector('a');
+    const a = illust.querySelector('a');
     label.replaceChildren(...a.children);
     a.appendChild(label);
-    illust.replaceChildren(...old.children);
-    old.replaceWith(illust);
     illust.addEventListener("touchstart", event => {
       startX = event.touches[0].clientX;
       startY = event.touches[0].clientY;
@@ -189,7 +194,7 @@
     reloadTriger(document);
     document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
     const viewCenter = document.body.querySelector('#view-center-block');
-    const illust = viewCenter.querySelector('#_illust');
+    const illust = viewCenter.querySelector('#illust');
     const exView = element.create('<input id="exView" type="checkbox" disabled>');
     viewCenter.insertAdjacentElement('afterbegin', exView);
     const exOpen = element.create('<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
@@ -214,17 +219,18 @@
   
   window.changePage = async function changePage(href, mode='push') {
     /**mode: [push, pop, reload] */
-    scroll(0,0);
     console.log('changePage: ', href);
     console.log('mode:', mode);
     if (!docMap.has(href) || mode == 'reload') docMap.set(href, await exbody(href));
     document.body = docMap.get(href);
-    document.title = document.body.dataset.title;
+    const dataset = document.body.dataset;
+    document.title = dataset.title;
     if (mode == 'push') {
-      history.pushState({}, document.title, document.body.dataset.href);
+      history.pushState({}, dataset.title, dataset.href);
     } else {
-      history.replaceState({}, document.title, document.body.dataset.href);
+      history.replaceState({}, dataset.title, dataset.href);
     }
+    scroll(0, dataset.scrollY);
     console.log(document.location.href);
     document.querySelectorAll('#prev_illust,#next_illust').forEach(a => {
       a.onclick = e => {
@@ -235,17 +241,33 @@
       if (!docMap.has(a.href)) exbody(a.href).then(d => docMap.set(a.href, d));
     });
   }
+
+  const scriptFilter = (src, t) => {
+    if (src.match('view_popup.js')) {
+      t = '';
+    } else if (src.match('common.js')) {
+      t = t.replace(/setImageSize.*\n/, '');
+      t = t.replace(/function setImageSize[\s\S]*?function/, 'function');
+      t = t.replace(/setTimeout[\s\S]*?}, 1\);/, '');
+    } else if (src.match('view.js')) {
+      t = t.replace(/function setSwipe[\s\S]*setSwipe\(\);/, '');
+    }
+    return t;
+  }
+
   const main = async () => {
     if (window.parent != window) return;
     setStyle();
     window.doctmp = document.createDocumentFragment();
-    window.scriptFunc = await Promise.all([...document.querySelectorAll('script[src^="/"],script[src^="https://sp.nijie.info/"]')]
-    .map(s => fetch(s.src).then(r => r.text()).then(t => new Function('document', '$', t))));
+    window.scriptFunc = await Promise.all([...document.querySelectorAll('script[src]')]
+      .filter(s=>s.src.startWith('https://sp.njie.info/')).map(async s => {
+      const t = await fetch(s.src).then(r => r.text()).then(t=>scriptFilter(s.src, t));
+      return new Function('document', '$', t);
+    }));
     window.docMap = new Map();
     changePage(document.location.href, 'reload');
-    window.onpopstate = e => {
-      changePage(document.location.href, 'pop');
-    }
+    window.onscroll = e => document.body.dataset.scrollY = window.scrollY;
+    window.onpopstate = e => changePage(document.location.href, 'pop');
   }
   if (document.readyState == 'loading') {
     document.addEventListener('DOMContentLoaded', main);
