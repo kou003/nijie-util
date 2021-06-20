@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      2.0
+// @version      3.0
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -69,6 +69,7 @@
     }
     `
   }
+
   const element = {
     template: document.createElement('template'),
     create: function (string) {
@@ -76,6 +77,7 @@
       return this.template.content.firstElementChild;
     }
   }
+
   const setSwipe = (document) => {
     let startX;
     let startY;
@@ -96,13 +98,11 @@
       startY = event.touches[0].clientY;
       startT = event.timeStamp;
     });
-
-    illust.addEventListener("touchmove", function (event) {
+    illust.addEventListener("touchmove", event => {
       moveX = event.changedTouches[0].clientX;
       moveY = event.changedTouches[0].clientY;
       moveT = event.timeStamp;
     });
-
     illust.addEventListener("touchend", function () {
       let diffX = moveX - startX;
       let diffY = moveY - startY;
@@ -116,19 +116,21 @@
       }
     });
   }
+
   const dom = url => fetch(url).then(r => r.text()).then(t => {
     let d = new DOMParser().parseFromString(t, 'text/html');
     d.body.dataset.title = d.title;
     d.body.dataset.href = url;
     return d;
   });
+
   const exBookmark = (document) => {
     const bmwin = document.body.appendChild(element.create('<div id="bmWindow"><i class="fa fa-window-close"></i><iframe/></div>'));
     const bmframe = bmwin.querySelector('iframe');
     bmwin.querySelector('i').addEventListener('click', e => {
       bmwin.classList.remove('open');
       bmframe.src = '';
-      changePage(document.location.href, true);
+      changePage(document.body.dataset.href, 'reload');
     });
     const bmButton = document.querySelector('#bookmark_button a');
     bmButton.removeAttribute('onclick');
@@ -147,96 +149,74 @@
     });
   }
 
-  const loadScript = async (loaded=false) => {
-    let ss = document.querySelectorAll('script[src]:not(.loaded)');
-    for (let s of ss) {
-      if (loaded) {
-        s.className = 'loaded';
-      } else {
-        if (s.src.match(/view_popup.js/)) continue;
-        if (!s.src.match(/sp.nijie.info/)) continue;
-        let ns = document.createElement('script');
-        await new Promise(resolve=>{
-          ns.onload = resolve;
-          ns.src = s.src;
-          ns.className = 'loaded';
-          s.replaceWith(ns);
-        });
-      }
-    }
+  const loadScript = document => {
+    let g = Object.assign(e => $(e, document.body), $);
+    window.scriptFunc.forEach(f => f(document, g));
   }
 
   const exView = async (document) => {
     if (document.body.dataset.extend) return;
     document.body.dataset.extend = true;
     setSwipe(document);
+    loadScript(document);
     exBookmark(document);
-    document.querySelectorAll('#sub_button a').forEach(a=>a.target='_new');
+    document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
     const viewCenter = document.body.querySelector('#view-center-block');
     const illust = viewCenter.querySelector('#_illust');
-    illust.querySelector('a').onclick = e=>!!e.preventDefault();
+    illust.querySelector('a').onclick = e => !!e.preventDefault();
     const exView = element.create('<input id="exView" type="checkbox" disabled>');
     viewCenter.insertAdjacentElement('afterbegin', exView);
     const exOpen = element.create('<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
     const exClose = element.create('<label class="ex-close" for="exView"><i class="fa fa-angle-up"></i><label>');
     illust.appendChild(exOpen);
-    viewCenter
     const url = document.body.dataset.href.replace('view.php', 'view_popup.php');
-    const doc = await dom(url);
-    const imgs = doc.querySelectorAll('.popup_illust');
-    imgs.forEach((img, i) => {
-      illust.appendChild(img);
-      img.addEventListener('click', e => imgs[(i + 1) % imgs.length].scrollIntoView());
-      illust.appendChild(exClose.cloneNode(true));
+    dom(url).then(doc => {
+      const imgs = doc.querySelectorAll('.popup_illust');
+      imgs.forEach((img, i) => {
+        illust.appendChild(img);
+        img.addEventListener('click', e => imgs[(i + 1) % imgs.length].scrollIntoView());
+        illust.appendChild(exClose.cloneNode(true));
+      });
+      exView.onchange = e => exView.checked ? illust.scrollIntoView() : scroll(0, 0);
+      exView.disabled = false;
     });
-    exView.onchange = e => exView.checked ? illust.scrollIntoView() : scroll(0,0);
-    exView.disabled = false;
+    return document;
   }
 
-  async function changePage(href, reload = false) {
+  const exbody = url => dom(url).then(exView).then(d => doctmp.appendChild(d.body));
+  
+  async function changePage(href, mode='push') {
+    /**mode: [push, pop, reload] */
     console.log('changePage: ', href);
-    if (!docMap.has(href) || reload) docMap.set(href, await dom(href));
-    if (document.body.dataset.href != href || reload) {
-      const olddoc = docMap.get(document.body.dataset.href);
-      const newdoc = docMap.get(href);
-      [olddoc.body, document.body] = [document.body, newdoc.body];
-      document.title = document.body.dataset.title;
+    console.log('mode:', mode);
+    if (!docMap.has(href) || mode == 'reload') docMap.set(href, await exbody(href));
+    document.body = docMap.get(href);
+    document.title = document.body.dataset.title;
+    if (mode == 'push') {
       history.pushState({}, document.title, document.body.dataset.href);
+    } else {
+      history.replaceState({}, document.title, document.body.dataset.href);
     }
-    history.replaceState({}, document.title, document.body.dataset.href||href);
-    await loadScript();
-    exView(document);
-    console.log(document.location.href, document.body.dataset.href, document.body);
+    console.log(document.location.href);
     document.querySelectorAll('#prev_illust,#next_illust').forEach(a => {
-      console.log(a);
       a.onclick = e => {
         console.log('CLICKED!');
-        console.log(e);
-        window._e=e;
         changePage(e.currentTarget.href);
         return !!e.preventDefault();
       };
-      if (!docMap.has(a.href)) {
-        dom(a.href).then(d => {
-          docMap.set(a.href, d);
-          exView(d);
-        });
-      }
+      if (!docMap.has(a.href)) exbody(a.href).then(d => docMap.set(a.href, d));
     });
   }
-  const main = () => {
+  const main = async () => {
+    if (window.parent != window) return;
     setStyle();
-    document.href = location.href;
-    document.body.dataset.href = location.href;
-    document.body.dataset.title = document.title;
-    loadScript(loaded=true);
-    window.docMap = new Map([
-      [document.location.href, document.cloneNode(deep = true)]
-    ]);
-    changePage(document.location.href);
-    window.onpopstate=e=>{
-      console.log('popstate: ', document.location.href);
-      changePage(document.location.href);
+    window.doctmp = document.createDocumentFragment();
+    window.scriptFunc = await Promise.all([...document.querySelectorAll('script[src^="/"],script[src^="https://sp.nijie.info/"]')]
+      .map(s => fetch(s.src).then(r => r.text()).then(t => new Function('document', '$', t))));
+    window.docMap = new Map();
+    changePage(document.location.href, 'reload');
+    window.onpopstate = e => {
+      changePage(document.location.href, 'pop');
     }
   }
   if (document.readyState == 'loading') {
