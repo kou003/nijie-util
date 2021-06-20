@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.0
+// @version      3.1
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -187,6 +187,7 @@
   
   async function changePage(href, mode='push') {
     /**mode: [push, pop, reload] */
+    scroll(0,0);
     console.log('changePage: ', href);
     console.log('mode:', mode);
     if (!docMap.has(href) || mode == 'reload') docMap.set(href, await exbody(href));
