@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.4
+// @version      3.41
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -103,9 +103,9 @@
     if (!old) return;
     const illust = element.create('<div id="_illust" />');
     const label = element.create('<label for="exView" />');
-    const img = old.querySelector('a img');
-    img.replaceWith(label);
-    label.appendChild(img);
+    const a = old.querySelector('a');
+    label.replaceChildren(...a.children);
+    a.appendChild(label);
     illust.replaceChildren(...old.children);
     old.replaceWith(illust);
     illust.addEventListener("touchstart", event => {
