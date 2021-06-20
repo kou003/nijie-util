@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.51
+// @version      3.6
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -135,6 +135,7 @@
   }
 
   const dom = url => fetch(url).then(r => r.text()).then(t => {
+    t = t.replaceAll('http://pic01','https://pic01');
     let d = new DOMParser().parseFromString(t, 'text/html');
     d.body.dataset.title = d.title;
     d.body.dataset.href = url;
