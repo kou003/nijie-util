@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.2
+// @version      3.3
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -66,6 +66,17 @@
     #exView:checked ~ #_illust a,
     #exView:checked ~ #_illust .ex-open {
       display: none;
+    }
+
+    #_illust {
+      counter-reset: num 0 total var(--total);
+    }
+    #_illust .ex-open::after {
+      content: " (" counter(total) ")";
+    }
+    #_illust .ex-close::after {
+      counter-increment: num;
+      content: " (" counter(num) " / " counter(total) ")";
     }
     `
   }
@@ -175,6 +186,7 @@
     const url = document.body.dataset.href.replace('view.php', 'view_popup.php');
     dom(url).then(doc => {
       const imgs = doc.querySelectorAll('.popup_illust');
+      illust.style.setProperty('--total', imgs.length);
       imgs.forEach((img, i) => {
         illust.appendChild(img);
         img.addEventListener('click', e => imgs[(i + 1) % imgs.length].scrollIntoView());
