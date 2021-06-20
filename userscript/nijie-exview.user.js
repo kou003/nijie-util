@@ -79,12 +79,9 @@
       content: " (" counter(num) " / " counter(total) ")";
     }
 
-    .illust-layout {
+    .illust-layout div.illust-image {
       width: calc(100vw/3) !important;
       height: calc(100vw/3) !important;
-    }
-    .illust-layout div.illust-image {
-      width: 100% !important;
     }
     `
   }
