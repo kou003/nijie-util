@@ -41,6 +41,10 @@
       border: solid 2px #D7712D;
       box-sizing: border-box;
     }
+    
+    #view-image-block #_illust img {
+      max-width: 100%;
+    }
 
     #exView {
       display: none;
@@ -52,18 +56,25 @@
     .popup_illust {
       display: none;
     }
-    #exView:checked~#illust .ex-close {
+    #exView:checked~#_illust .ex-close {
       display: block;
     }
-    #exView:checked ~ #illust .popup_illust {
+    #exView:checked ~ #_illust .popup_illust {
       display: inline;
     }
-    #exView:checked ~ div:not(#illust),
-    #exView:checked ~ #illust a,
-    #exView:checked ~ #illust .ex-open {
+    #exView:checked ~ div:not(#_illust),
+    #exView:checked ~ #_illust a,
+    #exView:checked ~ #_illust .ex-open {
       display: none;
     }
     `
+  }
+  const element = {
+    template: document.createElement('template'),
+    create: function (string) {
+      this.template.innerHTML = string;
+      return this.template.content.firstElementChild;
+    }
   }
   const setSwipe = (document) => {
     let startX;
@@ -75,43 +86,42 @@
     const dist = 100;
     const maxSlope = 0.5;
     const minSpeed = 0.5;
-    let element = document.querySelector('#illust');
-    element.outerHTML = element.outerHTML;
-    element = document.querySelector('#illust');
-    if (element) {
-      element.addEventListener("touchstart", function (event) {
-        startX = event.touches[0].clientX;
-        startY = event.touches[0].clientY;
-        startT = event.timeStamp;
-      });
+    const old = document.querySelector('#illust');
+    if (!old) return;
+    const illust = element.create('<div id="_illust" />');
+    illust.replaceChildren(...old.children);
+    old.replaceWith(illust);
+    illust.addEventListener("touchstart", event => {
+      startX = event.touches[0].clientX;
+      startY = event.touches[0].clientY;
+      startT = event.timeStamp;
+    });
 
-      element.addEventListener("touchmove", function (event) {
-        moveX = event.changedTouches[0].clientX;
-        moveY = event.changedTouches[0].clientY;
-        moveT = event.timeStamp;
-      });
+    illust.addEventListener("touchmove", function (event) {
+      moveX = event.changedTouches[0].clientX;
+      moveY = event.changedTouches[0].clientY;
+      moveT = event.timeStamp;
+    });
 
-      element.addEventListener("touchend", function () {
-        let diffX = moveX - startX;
-        let diffY = moveY - startY;
-        let diffT = moveT - startT;
-        let slope = Math.abs(diffY / diffX);
-        let speed = Math.abs(diffX / diffT);
-        console.log(diffX, diffY, slope, speed);
-        if (Math.abs(diffX) > dist && slope < maxSlope && speed > minSpeed) {
-          document.querySelector(diffX > 0 ? "#next_illust" : "#prev_illust").click();
-        }
-      });
-    }
+    illust.addEventListener("touchend", function () {
+      let diffX = moveX - startX;
+      let diffY = moveY - startY;
+      let diffT = moveT - startT;
+      let slope = Math.abs(diffY / diffX);
+      let speed = Math.abs(diffX / diffT);
+      console.log(diffX, diffY, slope, speed);
+      if (Math.abs(diffX) > dist && slope < maxSlope && speed > minSpeed) {
+        console.log('SWIPED!');
+        window.document.querySelector(diffX > 0 ? "#next_illust" : "#prev_illust").click();
+      }
+    });
   }
-  const element = {
-    template: document.createElement('template'),
-    create: function (string) {
-      this.template.innerHTML = string;
-      return this.template.content.firstElementChild;
-    }
-  }
-  const dom = url => fetch(url).then(r => r.text()).then(t => new DOMParser().parseFromString(t, 'text/html'));
+  const dom = url => fetch(url).then(r => r.text()).then(t => {
+    let d = new DOMParser().parseFromString(t, 'text/html');
+    d.body.dataset.title = d.title;
+    d.body.dataset.href = url;
+    return d;
+  });
   const exBookmark = (document) => {
     const bmwin = document.body.appendChild(element.create('<div id="bmWindow"><i class="fa fa-window-close"></i><iframe/></div>'));
     const bmframe = bmwin.querySelector('iframe');
@@ -136,20 +146,42 @@
       e.preventDefault();
     });
   }
+
+  const loadScript = async (loaded=false) => {
+    let ss = document.querySelectorAll('script[src]:not(.loaded)');
+    for (let s of ss) {
+      if (loaded) {
+        s.className = 'loaded';
+      } else {
+        if (s.src.match(/view_popup.js/)) continue;
+        if (!s.src.match(/sp.nijie.info/)) continue;
+        let ns = document.createElement('script');
+        await new Promise(resolve=>{
+          ns.onload = resolve;
+          ns.src = s.src;
+          ns.className = 'loaded';
+          s.replaceWith(ns);
+        });
+      }
+    }
+  }
+
   const exView = async (document) => {
     if (document.body.dataset.extend) return;
     document.body.dataset.extend = true;
     setSwipe(document);
     exBookmark(document);
+    document.querySelectorAll('#sub_button a').forEach(a=>a.target='_new');
     const viewCenter = document.body.querySelector('#view-center-block');
-    const illust = viewCenter.querySelector('#illust');
-    illust.querySelector('a').onclick = e => false;
+    const illust = viewCenter.querySelector('#_illust');
+    illust.querySelector('a').onclick = e=>!!e.preventDefault();
     const exView = element.create('<input id="exView" type="checkbox" disabled>');
     viewCenter.insertAdjacentElement('afterbegin', exView);
     const exOpen = element.create('<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
     const exClose = element.create('<label class="ex-close" for="exView"><i class="fa fa-angle-up"></i><label>');
-    illust.append(exOpen);
-    const url = document.URL.replace('view.php', 'view_popup.php');
+    illust.appendChild(exOpen);
+    viewCenter
+    const url = document.body.dataset.href.replace('view.php', 'view_popup.php');
     const doc = await dom(url);
     const imgs = doc.querySelectorAll('.popup_illust');
     imgs.forEach((img, i) => {
@@ -162,24 +194,28 @@
   }
 
   async function changePage(href, reload = false) {
+    console.log('changePage: ', href);
     if (!docMap.has(href) || reload) docMap.set(href, await dom(href));
-    if (document.location.href != href || reload) {
-      const olddoc = document;
+    if (document.body.dataset.href != href || reload) {
+      const olddoc = docMap.get(document.body.dataset.href);
       const newdoc = docMap.get(href);
-      [olddoc.body, newdoc.body] = [newdoc.body, olddoc.body];
-      document.title = newdoc.title;
-      history.pushState({}, document.title, href);
-    } else {
-      history.replaceState({}, document.title, href);
+      [olddoc.body, document.body] = [document.body, newdoc.body];
+      document.title = document.body.dataset.title;
+      history.pushState({}, document.title, document.body.dataset.href);
     }
+    history.replaceState({}, document.title, document.body.dataset.href||href);
+    await loadScript();
     exView(document);
-    console.log(document.location, document.URL, document.body);
+    console.log(document.location.href, document.body.dataset.href, document.body);
     document.querySelectorAll('#prev_illust,#next_illust').forEach(a => {
       console.log(a);
-      a.addEventListener('click', e => {
-        changePage(a.href);
-        e.preventDefault();
-      });
+      a.onclick = e => {
+        console.log('CLICKED!');
+        console.log(e);
+        window._e=e;
+        changePage(e.currentTarget.href);
+        return !!e.preventDefault();
+      };
       if (!docMap.has(a.href)) {
         dom(a.href).then(d => {
           docMap.set(a.href, d);
@@ -190,11 +226,18 @@
   }
   const main = () => {
     setStyle();
+    document.href = location.href;
+    document.body.dataset.href = location.href;
+    document.body.dataset.title = document.title;
+    loadScript(loaded=true);
     window.docMap = new Map([
       [document.location.href, document.cloneNode(deep = true)]
     ]);
     changePage(document.location.href);
-    window.onpopstate=e=>changePage(document.location.href);
+    window.onpopstate=e=>{
+      console.log('popstate: ', document.location.href);
+      changePage(document.location.href);
+    }
   }
   if (document.readyState == 'loading') {
     document.addEventListener('DOMContentLoaded', main);
