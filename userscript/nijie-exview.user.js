@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.3
+// @version      3.4
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -165,8 +165,19 @@
   }
 
   const loadScript = document => {
-    let g = Object.assign(e => $(e, document.body), $);
+    let g = Object.assign((e, t) => (typeof e == 'function') ? e() : $(e, document.body), $);
     window.scriptFunc.forEach(f => f(document, g));
+  }
+
+  const reloadTriger = document => {
+    const TIMEOUT = 1000;
+    let tid = 0;
+    const element = document.querySelector('#left_button');
+    element.addEventListener('touchstart', e=>{
+      clearTimeout(tid);
+      tid = setTimeout(()=>confirm('リロードしますか?')&&changePage(window.location.href, 'reload'), TIMEOUT);
+    });
+    element.addEventListener('touchend', e=>clearTimeout(tid));
   }
 
   const exView = async (document) => {
@@ -175,6 +186,7 @@
     setSwipe(document);
     loadScript(document);
     exBookmark(document);
+    reloadTriger(document);
     document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
     const viewCenter = document.body.querySelector('#view-center-block');
     const illust = viewCenter.querySelector('#_illust');
@@ -200,7 +212,7 @@
 
   const exbody = url => dom(url).then(exView).then(d => doctmp.appendChild(d.body));
   
-  async function changePage(href, mode='push') {
+  window.changePage = async function changePage(href, mode='push') {
     /**mode: [push, pop, reload] */
     scroll(0,0);
     console.log('changePage: ', href);
@@ -228,7 +240,7 @@
     setStyle();
     window.doctmp = document.createDocumentFragment();
     window.scriptFunc = await Promise.all([...document.querySelectorAll('script[src^="/"],script[src^="https://sp.nijie.info/"]')]
-      .map(s => fetch(s.src).then(r => r.text()).then(t => new Function('document', '$', t))));
+    .map(s => fetch(s.src).then(r => r.text()).then(t => new Function('document', '$', t))));
     window.docMap = new Map();
     changePage(document.location.href, 'reload');
     window.onpopstate = e => {
