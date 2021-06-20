@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.6
+// @version      3.6.1
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -258,7 +258,7 @@
     setStyle();
     window.doctmp = document.createDocumentFragment();
     window.scriptFunc = await Promise.all([...document.querySelectorAll('script[src]')]
-      .filter(s=>s.src.startsWith('https://sp.njie.info/')).map(async s => {
+      .filter(s=>s.src.startsWith('https://sp.nijie.info/')).map(async s => {
       const t = await fetch(s.src).then(r => r.text()).then(t=>scriptFilter(s.src, t));
       return new Function('document', '$', t);
     }));
