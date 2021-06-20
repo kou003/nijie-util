@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.5
+// @version      3.51
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -129,9 +129,9 @@
       let diffT = moveT - startT;
       let slope = Math.abs(diffY / diffX);
       let speed = Math.abs(diffX / diffT);
-      console.log(diffX, diffY, slope, speed);
+      console.log(`dx: ${diffX}, dy: ${diffY}, slope: ${slope}, speed: ${speed}`);
       if (Math.abs(diffX) > dist && slope < maxSlope && speed > minSpeed) {
-        console.log('SWIPED!');
+        console.log('swiped');
         window.document.querySelector(diffX > 0 ? "#next_illust" : "#prev_illust").click();
       }
     });
@@ -234,7 +234,7 @@
     console.log(document.location.href);
     document.querySelectorAll('#prev_illust,#next_illust').forEach(a => {
       a.onclick = e => {
-        console.log('CLICKED!');
+        console.log('clicked');
         changePage(e.currentTarget.href);
         return !!e.preventDefault();
       };
@@ -260,7 +260,7 @@
     setStyle();
     window.doctmp = document.createDocumentFragment();
     window.scriptFunc = await Promise.all([...document.querySelectorAll('script[src]')]
-      .filter(s=>s.src.startWith('https://sp.njie.info/')).map(async s => {
+      .filter(s=>s.src.startsWith('https://sp.njie.info/')).map(async s => {
       const t = await fetch(s.src).then(r => r.text()).then(t=>scriptFilter(s.src, t));
       return new Function('document', '$', t);
     }));
