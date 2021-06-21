@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.6.1
+// @version      3.6.2
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -148,7 +148,7 @@
     bmwin.querySelector('i').addEventListener('click', e => {
       bmwin.classList.remove('open');
       bmframe.src = '';
-      changePage(document.body.dataset.href, 'reload');
+      changePage(window.document.body.dataset.href, 'reload');
     });
     const bmButton = document.querySelector('#bookmark_button a');
     bmButton.removeAttribute('onclick');
