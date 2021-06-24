@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.6.2
+// @version      3.6.3
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -215,7 +215,7 @@
 
   const exbody = url => dom(url).then(exView).then(d => doctmp.appendChild(d.body));
   
-  window.changePage = async function changePage(href, mode='push') {
+  window.changePage = async (href, mode='push') => {
     /**mode: [push, pop, reload] */
     console.log('changePage: ', href);
     console.log('mode:', mode);
