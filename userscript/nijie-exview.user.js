@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.6.3
+// @version      3.6.4
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -79,10 +79,7 @@
       content: " (" counter(num) " / " counter(total) ")";
     }
 
-    .illust-layout div.illust-image {
-      width: calc(100vw/3) !important;
-      height: calc(100vw/3) !important;
-    }
+    #illust-list{width:100%;}.illust-layout div.illust-image{width:100%;position:absolute;top:0;top:0;z-index:1;}div[class^="thumbnail-"]{z-index:2;}.illust-layout{width:calc(100%/3);padding-top:calc(100%/3);overflow:hidden;}
     `
   }
 
