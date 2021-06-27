@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.6.5
+// @version      3.6.6
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -78,8 +78,6 @@
       counter-increment: num;
       content: " (" counter(num) " / " counter(total) ")";
     }
-
-    #illust-list{width:100%;}.illust-layout div.illust-image{width:100% !important;height:100% !important;position:absolute;top:0;top:0;z-index:1;}div[class^="thumbnail-"]{z-index:2;}.illust-layout{width:calc(100%/3);padding-top:calc(100%/3);overflow:hidden;}
     `
   }
 
@@ -241,8 +239,6 @@
     if (src.match('view_popup.js')) {
       t = '';
     } else if (src.match('common.js')) {
-      t = t.replace(/setImageSize.*\n/, '');
-      t = t.replace(/function setImageSize[\s\S]*?function/, 'function');
       t = t.replace(/setTimeout[\s\S]*?}, 1\);/, '');
     } else if (src.match('view.js')) {
       t = t.replace(/function setSwipe[\s\S]*setSwipe\(\);/, '');
