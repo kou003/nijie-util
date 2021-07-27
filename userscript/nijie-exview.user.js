@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.6.6
+// @version      3.6.7
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -170,7 +170,8 @@
   const reloadTriger = document => {
     const TIMEOUT = 1000;
     let tid = 0;
-    const element = document.querySelector('#left_button');
+    const element = document.querySelector('#head-left>h1');
+    if (!element) return;
     element.addEventListener('touchstart', e=>{
       clearTimeout(tid);
       tid = setTimeout(()=>confirm('リロードしますか?')&&changePage(window.location.href, 'reload'), TIMEOUT);
@@ -188,8 +189,8 @@
     document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
     const viewCenter = document.body.querySelector('#view-center-block');
     const illust = viewCenter.querySelector('#illust');
-    const exView = element.create('<input id="exView" type="checkbox" disabled>');
-    viewCenter.insertAdjacentElement('afterbegin', exView);
+    const exViewCheck = element.create('<input id="exView" type="checkbox" disabled>');
+    viewCenter.insertAdjacentElement('afterbegin', exViewCheck);
     const exOpen = element.create('<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
     const exClose = element.create('<label class="ex-close" for="exView"><i class="fa fa-angle-up"></i><label>');
     illust.appendChild(exOpen);
@@ -202,15 +203,15 @@
         img.addEventListener('click', e => imgs[(i + 1) % imgs.length].scrollIntoView());
         illust.appendChild(exClose.cloneNode(true));
       });
-      exView.onchange = e => exView.checked ? illust.scrollIntoView() : scroll(0, 0);
-      exView.disabled = false;
+      exViewCheck.onchange = e => exViewCheck.checked ? illust.scrollIntoView() : scroll(0, 0);
+      exViewCheck.disabled = false;
     });
     return document;
   }
 
   const exbody = url => dom(url).then(exView).then(d => doctmp.appendChild(d.body));
   
-  window.changePage = async (href, mode='push') => {
+  const changePage = async (href, mode='push') => {
     /**mode: [push, pop, reload] */
     console.log('changePage: ', href);
     console.log('mode:', mode);
