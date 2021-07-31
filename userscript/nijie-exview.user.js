@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.6.7
+// @version      3.6.8
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -187,6 +187,7 @@
     exBookmark(document);
     reloadTriger(document);
     document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
+    document.querySelectorAll('.nuita').forEach(e=>e.onclick=()=>confirm('抜いた？'));
     const viewCenter = document.body.querySelector('#view-center-block');
     const illust = viewCenter.querySelector('#illust');
     const exViewCheck = element.create('<input id="exView" type="checkbox" disabled>');
