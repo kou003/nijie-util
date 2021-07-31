@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.7.0
+// @version      3.7.1
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -243,7 +243,7 @@
       t = t.replace(/setTimeout[\s\S]*?}, 1\);/, '');
     } else if (src.match('view.js')) {
       t = t.replace(/function setSwipe[\s\S]*setSwipe\(\);/, '');
-      t = t.replace(/(nuita_lock\s*=\s*true;)/, '$1\nif(!confirm("抜いた?")) return;');
+      t = t.replace(/nuita_lock == true/, 'nuita_lock||!confirm("抜いた?")');
     }
     return t;
   }
