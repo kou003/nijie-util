@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.7.1
+// @version      3.7.2
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -78,6 +78,8 @@
       counter-increment: num;
       content: " (" counter(num) " / " counter(total) ")";
     }
+
+    #manga,#filter{display:none}
     `
   }
 
