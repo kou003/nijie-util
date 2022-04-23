@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         nijie-exview
+// @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.0.1
-// @description  nijie-exview
+// @version      1.0.2
+// @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info/illust_view.php.php*
 // @match        https://sp.nijie.info/index_like_illust.php*
