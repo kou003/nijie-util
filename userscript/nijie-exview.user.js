@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.7.5
+// @version      3.8.0
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -103,10 +103,6 @@
     const minSpeed = 0.5;
     const illust = document.querySelector('#illust');
     if (!illust) return;
-    const label = element.create('<label for="exView" />');
-    const a = illust.querySelector('a');
-    label.replaceChildren(...a.children);
-    a.appendChild(label);
     illust.addEventListener("touchstart", event => {
       startX = event.touches[0].clientX;
       startY = event.touches[0].clientY;
@@ -136,6 +132,7 @@
     let d = new DOMParser().parseFromString(t, 'text/html');
     d.body.dataset.title = d.title;
     d.body.dataset.href = url;
+    d.body.dataset.scrollY = 60;
     return d;
   });
 
@@ -181,6 +178,31 @@
     element.addEventListener('touchend', e=>clearTimeout(tid));
   }
 
+  const resolveUrl = async (params, pathname, num, p, d, cd) => {
+    if (p < 1) return (d > 0) ? resolveUrl(params, pathname, 1, 1, d) : void(0);
+    if (!cd && num < 0) return resolveUrl(params, pathname, num, p-1, d, true);
+
+    params.set('p', p);
+    const doc = await fetch(pathname+'?'+params.toLocaleString()).then(r=>r.text()).then(t=>new DOMParser().parseFromString(t, 'text/html'));
+    const anks = doc.querySelectorAll('#illust-list>a[itemprop]');
+    console.log(anks);
+    if (anks.length == 0) return (d < 0) ? resolveUrl(params, pathname, num, p-1, d, true) : void(0)
+    if (!!cd) num = anks.length - 1;
+    if (num >= anks.length) return resolveUrl(params, pathname, 0, p+1, d);
+    params.set('num', num);
+    const href = anks[num].href + '#' + params.toLocaleString();
+    return href;
+  }
+
+  const revUrl = async (hash, d, url) => {
+    const params = new URLSearchParams(hash.replace('#','?'));
+    const pathname = params.get('pathname');
+    const num = params.get('num');
+    const p = params.get('p') || 1;
+    if (!pathname || num == null || p == null) return url;
+    return resolveUrl(params, pathname, +num+d, +p, d);
+  }
+
   const exView = async (document) => {
     if (document.body.dataset.extend) return;
     document.body.dataset.extend = true;
@@ -191,13 +213,25 @@
     document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
     const viewCenter = document.body.querySelector('#view-center-block');
     const illust = viewCenter.querySelector('#illust');
+    
+    const exLabel = element.create('<label for="exView" />');
+    const illustA = illust.querySelector(':scope>p>a');
+    exLabel.appendChild(illustA);
+    exLabel.addEventListener('click', e=>{
+      const v=exLabel.querySelector('video');
+      if (v) v.play();
+    });
+    illust.querySelector(':scope>p').appendChild(exLabel);
+    illustA.onclick = e => {exLabel.click(); return e.preventDefault()};
+
     const exViewCheck = element.create('<input id="exView" type="checkbox" disabled>');
     viewCenter.insertAdjacentElement('afterbegin', exViewCheck);
     const exOpen = element.create('<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
     const exClose = element.create('<label class="ex-close" for="exView"><i class="fa fa-angle-up"></i><label>');
     illust.appendChild(exOpen);
-    const url = document.body.dataset.href.replace('view.php', 'view_popup.php');
-    dom(url).then(doc => {
+
+    const popup_url = document.body.dataset.href.replace('view.php', 'view_popup.php');
+    dom(popup_url).then(doc => {
       const imgs = doc.querySelectorAll('.popup_illust');
       illust.style.setProperty('--total', imgs.length);
       imgs.forEach((img, i) => {
@@ -212,7 +246,7 @@
   }
 
   const exbody = url => dom(url).then(exView).then(d => doctmp.appendChild(d.body));
-  
+
   const changePage = async (href, mode='push') => {
     /**mode: [push, pop, reload] */
     console.log('changePage: ', href);
@@ -227,15 +261,31 @@
       history.replaceState({}, dataset.title, dataset.href);
     }
     scroll(0, dataset.scrollY);
+    const v = document.querySelector('#illust video');
+    if (v) v.play();
+
     console.log(document.location.href);
-    document.querySelectorAll('#prev_illust,#next_illust').forEach(a => {
-      a.onclick = e => {
-        console.log('clicked');
-        changePage(e.currentTarget.href);
-        return !!e.preventDefault();
-      };
-      if (!docMap.has(a.href)) exbody(a.href).then(d => docMap.set(a.href, d));
-    });
+    const viewNav = document.querySelector('.view-nav ul');
+    const location = new URL(document.body.dataset.href);
+    console.log(document.title);
+    Promise.all([[-1, 'li:first-of-type', 'left', 'next'], [+1, 'li:last-of-type', 'right', 'prev']].map(async args=>{
+      const [d, q, t, u] = args;
+      const btn = viewNav.querySelector(q);
+      const ank = btn.querySelector('a');
+      const oriUrl = ank ? ank.href : null;
+      btn.innerHTML = '\u00a0';
+      const url = await revUrl(location.hash, d, oriUrl);
+      if (url) {
+        btn.innerHTML = `<a id="${u}_illust" href="${url}"><i class="fa-solid fa-chevron-${t}"></i></a>`;
+        const a = btn.firstChild;
+        a.onclick = e => {
+            console.log('clicked');
+            changePage(e.currentTarget.href);
+            return !!e.preventDefault();
+          };
+          if (!docMap.has(a.href)) exbody(a.href).then(d => docMap.set(a.href, d));
+      }
+      }));
   }
 
   const scriptFilter = (src, t) => {
