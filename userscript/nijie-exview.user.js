@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.8.1
+// @version      3.8.2
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -184,7 +184,7 @@
 
     params.set('p', p);
     const doc = await fetch(pathname+'?'+params.toLocaleString()).then(r=>r.text()).then(t=>new DOMParser().parseFromString(t, 'text/html'));
-    const anks = doc.querySelectorAll('#illust-list>a[itemprop]');
+    const anks = doc.querySelectorAll('#main-container a[itemprop]');
     console.log(anks);
     if (anks.length == 0) return (d < 0) ? resolveUrl(params, pathname, num, p-1, d, true) : void(0)
     if (!!cd) num = anks.length - 1;

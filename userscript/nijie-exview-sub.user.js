@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.1.2
+// @version      1.1.3
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info/illust_view.php.php*
@@ -90,7 +90,7 @@
       const params = new URLSearchParams(location.search);
       params.set('pathname', location.pathname);
       if (!params.has('p')) params.set('p', 1);
-      document.querySelectorAll('#illust-list>a[itemprop]').forEach((a, i)=>{
+      document.querySelectorAll('#main-container a[itemprop]').forEach((a, i)=>{
         params.set('num', i);
         a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toLocaleString() : '');
       });
