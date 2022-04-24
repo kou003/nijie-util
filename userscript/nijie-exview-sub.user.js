@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.1.4
+// @version      1.1.5
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info/illust_view.php.php*
@@ -10,6 +10,7 @@
 // @match        https://sp.nijie.info/history_illust.php*
 // @match        https://sp.nijie.info/history_nuita.php*
 // @match        https://sp.nijie.info/search.php*
+// @match        https://sp.nijie.info/illust.php*
 // @updateURL    https://github.com/kou003/nijie-util/raw/master/userscript/nijie-exview-sub.user.js
 // @downloadURL  https://github.com/kou003/nijie-util/raw/master/userscript/nijie-exview-sub.user.js
 // @grant        none
