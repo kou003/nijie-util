@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.8.0
+// @version      3.8.1
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -132,7 +132,7 @@
     let d = new DOMParser().parseFromString(t, 'text/html');
     d.body.dataset.title = d.title;
     d.body.dataset.href = url;
-    d.body.dataset.scrollY = 60;
+    d.body.dataset.scrollY = 105;
     return d;
   });
 

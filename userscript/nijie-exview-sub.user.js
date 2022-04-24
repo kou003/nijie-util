@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.0.2
+// @version      1.1.0
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info/illust_view.php.php*
@@ -46,12 +46,42 @@
     `;
   }
 
+  const activateNextPage = () => {
+    const pageContainer = document.querySelector('.paging-container');
+    const right = pageContainer.querySelector('.right');
+    if (!right.querySelector('.page_button_none')) return;
+
+    const params = new URLSearchParams(location.search);
+    const p = +params.get('p') || 1;
+    const path = location.pathname;
+    
+    params.set('p', p+1);
+    const rUrl = `${path}?${params.toLocaleString()}`;
+    right.innerHTML = `<p class="page_button"><a href="${rUrl}" class="next">&gt;</a></p>`;
+
+    const center = pageContainer.querySelector('.center ul');
+    center.innerHTML = '';
+    for (let i=Math.max(1, p-3); i<p+2; i++) {
+      params.set('p', i);
+      const cUrl = `${path}?${params.toLocaleString()}`;
+      const d = (i == p) ? 'class="do"' : '';
+      center.insertAdjacentHTML('beforeend', `<li><a href="${cUrl}" ${d}>${i}</a></li>`);
+    }
+
+    const left = pageContainer.querySelector('.left');
+    if (left.querySelector('.page_button_none')) return;
+    params.set('p', p-1);
+    const lUrl = `${path}?${params.toLocaleString()}`;
+    left.innerHTML = `<p class="page_button"><a href="${lUrl}" class="back">&lt;</a></p>`;
+  }
+
   const main = async () => {
     setStyle();
+
     document.querySelector('#head-right').insertAdjacentHTML('afterbegin', `<label id="toggle-rev" class="float-left"><input type="checkbox"><div></div></label>`);
     const toggle = document.querySelector('#toggle-rev>input');
     toggle.checked = !!+localStorage['toggle-rev'];
-    const func = e => {
+    const toggleFunc = async e => {
       localStorage['toggle-rev'] = +toggle.checked;
       const params = new URLSearchParams(location.search);
       params.set('pathname', location.pathname);
@@ -61,8 +91,10 @@
         a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toLocaleString() : '');
       });
     }
-    toggle.addEventListener('change', func);
-    func();
+    toggle.addEventListener('change', toggleFunc);
+    toggleFunc();
+
+    activateNextPage();
   }
     
   if (document.readyState == 'loading') {
