@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.1.0
+// @version      1.1.2
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info/illust_view.php.php*
@@ -42,6 +42,10 @@
       content: "";
       border: 2px solid white;
       background-color: gray;
+    }
+    .paging-container .left, .paging-container .right {
+      float: none;
+      width: auto;
     }
     `;
   }
