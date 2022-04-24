@@ -9,6 +9,7 @@
 // @match        https://sp.nijie.info/bookmark.php*
 // @match        https://sp.nijie.info/history_illust.php*
 // @match        https://sp.nijie.info/history_nuita.php*
+// @match        https://sp.nijie.info/search.php*
 // @updateURL    https://github.com/kou003/nijie-util/raw/master/userscript/nijie-exview-sub.user.js
 // @downloadURL  https://github.com/kou003/nijie-util/raw/master/userscript/nijie-exview-sub.user.js
 // @grant        none
