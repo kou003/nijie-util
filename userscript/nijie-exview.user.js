@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.9.0
+// @version      3.9.1
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -184,7 +184,7 @@
       window.fetchCache.fill([void(0),void(0)]);
       window.fetchCacheIndex = 0;
     }
-    for (const [key, value] of window.fetchCache) if (key == url) return value;
+    for (const [key, value] of window.fetchCache) if (key == url) {console.log('cache hit'); return value};
     const doc = await fetch(url).then(r=>r.text()).then(t=>new DOMParser().parseFromString(t, 'text/html'));
     const value = [...doc.querySelectorAll('#main-container a[itemprop]')].map(a=>a.href);
     window.fetchCache[window.fetchCacheIndex++] = [url, value];
@@ -198,7 +198,10 @@
     if (!cd && num < 0) return resolveUrl(params, pathname, num, p-1, d, true);
 
     params.set('p', p);
-    const hrefs = await chachedHrefs(pathname+'?'+params.toLocaleString());
+    const pureParams = new URLSearchParams(params);
+    pureParams.delete('pathname');
+    pureParams.delete('num');
+    const hrefs = await chachedHrefs(pathname + '?' + pureParams.toLocaleString());
     console.log(hrefs);
     if (hrefs.length == 0) return (d < 0) ? resolveUrl(params, pathname, num, p-1, d, true) : void(0)
     if (!!cd) num = hrefs.length - 1;
