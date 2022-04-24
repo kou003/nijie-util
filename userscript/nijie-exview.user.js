@@ -178,19 +178,33 @@
     element.addEventListener('touchend', e=>clearTimeout(tid));
   }
 
+  const chachedHrefs = async url => {
+    if (window.fetchCache == void(0)) {
+      window.fetchCache = Array(3);
+      window.fetchCache.fill([void(0),void(0)]);
+      window.fetchCacheIndex = 0;
+    }
+    for (const [key, value] of window.fetchCache) if (key == url) return value;
+    const doc = await fetch(url).then(r=>r.text()).then(t=>new DOMParser().parseFromString(t, 'text/html'));
+    const value = [...doc.querySelectorAll('#main-container a[itemprop]')].map(a=>a.href);
+    window.fetchCache[window.fetchCacheIndex++] = [url, value];
+    window.fetchCacheIndex %= window.fetchCache.length;
+    return value;
+  }
+
+
   const resolveUrl = async (params, pathname, num, p, d, cd) => {
     if (p < 1) return (d > 0) ? resolveUrl(params, pathname, 1, 1, d) : void(0);
     if (!cd && num < 0) return resolveUrl(params, pathname, num, p-1, d, true);
 
     params.set('p', p);
-    const doc = await fetch(pathname+'?'+params.toLocaleString()).then(r=>r.text()).then(t=>new DOMParser().parseFromString(t, 'text/html'));
-    const anks = doc.querySelectorAll('#main-container a[itemprop]');
-    console.log(anks);
-    if (anks.length == 0) return (d < 0) ? resolveUrl(params, pathname, num, p-1, d, true) : void(0)
-    if (!!cd) num = anks.length - 1;
-    if (num >= anks.length) return resolveUrl(params, pathname, 0, p+1, d);
+    const hrefs = await chachedHrefs(pathname+'?'+params.toLocaleString());
+    console.log(hrefs);
+    if (hrefs.length == 0) return (d < 0) ? resolveUrl(params, pathname, num, p-1, d, true) : void(0)
+    if (!!cd) num = hrefs.length - 1;
+    if (num >= hrefs.length) return resolveUrl(params, pathname, 0, p+1, d);
     params.set('num', num);
-    const href = anks[num].href + '#' + params.toLocaleString();
+    const href = hrefs[num] + '#' + params.toLocaleString();
     return href;
   }
 
