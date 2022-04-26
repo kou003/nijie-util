@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.9.1
+// @version      3.9.2
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -103,6 +103,7 @@
     const minSpeed = 0.5;
     const illust = document.querySelector('#illust');
     if (!illust) return;
+    illust.querySelectorAll('.lazy').forEach(e=>e.classList.remove('lazy'));
     illust.addEventListener("touchstart", event => {
       startX = event.touches[0].clientX;
       startY = event.touches[0].clientY;
@@ -252,6 +253,7 @@
       const imgs = doc.querySelectorAll('.popup_illust');
       illust.style.setProperty('--total', imgs.length);
       imgs.forEach((img, i) => {
+        img.loading='lazy';
         illust.appendChild(img);
         img.addEventListener('click', e => imgs[(i + 1) % imgs.length].scrollIntoView());
         illust.appendChild(exClose.cloneNode(true));
