@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.11.0
+// @version      3.11.1
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -322,7 +322,7 @@
       const imgs = doc.querySelectorAll('.popup_illust');
       illust.style.setProperty('--total', imgs.length);
       imgs.forEach((img, i) => {
-        img.loading='lazy';
+        //img.loading='lazy';
         illust.appendChild(img);
         img.addEventListener('click', e => imgs[(i + 1) % imgs.length].scrollIntoView());
         illust.appendChild(exClose.cloneNode(true));
