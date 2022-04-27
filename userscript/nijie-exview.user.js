@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.9.2
+// @version      3.10.0
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -84,21 +84,17 @@
   }
 
   const RingBuffer = class {
-    #buf;
-    #map;
-    #cur;
-
     constructor(n=1, defaultFanc, beforeDelete) {
-      this.#buf = new Array(n);
-      this.#map = new Map();
-      this.#cur = 0;
+      this.buf = new Array(n);
+      this.map = new Map();
+      this.cur = 0;
       this.defaultFanc = defaultFanc;
       this.beforeDelete = beforeDelete;
     }
 
     get(key) {
-      if (this.#map.has(key)) {
-        return this.#map.get(key);
+      if (this.map.has(key)) {
+        return this.map.get(key);
       }
       if (typeof this.defaultFanc == 'function') {
         const value = this.defaultFanc(key);
@@ -113,28 +109,28 @@
     }
 
     set(key, value) {
-      if (this.#map.has(key)) {
-        this.#map.set(key, value);
+      if (this.map.has(key)) {
+        this.map.set(key, value);
         return;
       }
-      const old = this.#buf[this.#cur];
+      const old = this.buf[this.cur];
       if (typeof this.beforeDelete == 'function') {
         const res = this.beforeDelete(old, this.get(old));
-        if (res instanceof Promise) return res.then(()=>this.#overSet(key, value))
+        if (res instanceof Promise) return res.then(()=>this.overSet(key, value))
       }
       return this.#overSet(key, value);
     }
 
     #overSet(key, value) {
-      const old = this.#buf[this.#cur];
-      this.#map.delete(old);
-      this.#buf[this.#cur] = key;
-      this.#cur = (this.#cur + 1) % this.#buf.length;
-      this.#map.set(key, value);
+      const old = this.buf[this.cur];
+      this.map.delete(old);
+      this.buf[this.cur] = key;
+      this.cur = (this.cur + 1) % this.buf.length;
+      this.map.set(key, value);
     }
 
     has(key) {
-      return this.#map.has(key);
+      return this.map.has(key);
     }
     
   }
@@ -226,7 +222,7 @@
 
   const loadScript = document => {
     let g = Object.assign((e, t) => (typeof e == 'function') ? e() : $(e, document.body), $);
-    window.scriptFunc.forEach(f => f(document, g));
+    scriptFunc.forEach(f => f(document, g));
   }
 
   const reloadTriger = document => {
@@ -236,7 +232,7 @@
     if (!element) return;
     element.addEventListener('touchstart', e=>{
       clearTimeout(tid);
-      tid = setTimeout(()=>confirm('リロードしますか?')&&changePage(window.location.href, 'reload'), TIMEOUT);
+      tid = setTimeout(()=>confirm('リロードしますか?')&&changePage(location.href, 'reload'), TIMEOUT);
     });
     element.addEventListener('touchend', e=>clearTimeout(tid));
   }
@@ -250,7 +246,7 @@
     pureParams.delete('pathname');
     pureParams.delete('num');
     const url = pathname + '?' + pureParams.toLocaleString();
-    const hrefs = await window.listBuffer.get(url);
+    const hrefs = await listBuffer.get(url);
     console.log(hrefs);
     if (hrefs.length == 0) return (d < 0) ? resolveUrl(params, pathname, num, p-1, d, true) : void(0)
     if (!!cd) num = hrefs.length - 1;
@@ -277,18 +273,19 @@
     exBookmark(document);
     reloadTriger(document);
     document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
+    const href = document.body.dataset.href;
     const viewCenter = document.body.querySelector('#view-center-block');
+
     const illust = viewCenter.querySelector('#illust');
-    
     const exLabel = element.create('<label for="exView" />');
-    const illustA = illust.querySelector(':scope>p>a');
-    exLabel.appendChild(illustA);
+    const illustAnk = illust.querySelector(':scope>p>a');
+    illustAnk.onclick = e => {exLabel.click(); return e.preventDefault()};
+    exLabel.appendChild(illustAnk);
     exLabel.addEventListener('click', e=>{
       const v=exLabel.querySelector('video');
       if (v && !v.playing()) v.play();
     });
     illust.querySelector(':scope>p').appendChild(exLabel);
-    illustA.onclick = e => {exLabel.click(); return e.preventDefault()};
 
     const exViewCheck = element.create('<input id="exView" type="checkbox" disabled>');
     viewCenter.insertAdjacentElement('afterbegin', exViewCheck);
@@ -296,7 +293,7 @@
     const exClose = element.create('<label class="ex-close" for="exView"><i class="fa fa-angle-up"></i><label>');
     illust.appendChild(exOpen);
 
-    const popup_url = document.body.dataset.href.replace('view.php', 'view_popup.php');
+    const popup_url = href.replace('view.php', 'view_popup.php');
     dom(popup_url).then(doc => {
       const imgs = doc.querySelectorAll('.popup_illust');
       illust.style.setProperty('--total', imgs.length);
@@ -312,14 +309,20 @@
     return document;
   }
 
-  const exbody = url => dom(url).then(exView).then(d => doctmp.appendChild(d.body));
+  const exbody = async url => {
+    const d = await dom(url).then(exView);
+    const body = d.body;
+    body.remove();
+    return body;
+  }
 
   const changePage = async (href, mode='push') => {
     /**mode: [push, pop, reload] */
     console.log('changePage: ', href);
     console.log('mode:', mode);
-    if (!docMap.has(href) || mode == 'reload') docMap.set(href, await exbody(href));
-    document.body = docMap.get(href);
+    if (mode == 'reload') bodyBuffer.set(href, await exbody(href));
+    document.body = await bodyBuffer.get(href);
+    illustBuffer.get(href);
     const dataset = document.body.dataset;
     document.title = dataset.title;
     if (mode == 'push') {
@@ -350,7 +353,7 @@
             changePage(e.currentTarget.href);
             return !!e.preventDefault();
           };
-        window.illustBuffer.get(url);
+        illustBuffer.get(url);
       }
       }));
   }
@@ -375,18 +378,18 @@
   const main = async () => {
     if (window.parent != window) return;
     setStyle();
-    window.doctmp = document.createDocumentFragment();
     window.scriptFunc = await Promise.all([...document.querySelectorAll('script[src]')]
       .filter(s=>s.src.startsWith('https://sp.nijie.info/')).map(async s => {
       const t = await fetch(s.src).then(r => r.text()).then(t=>scriptFilter(s.src, t));
       return new Function('document', '$', t);
     }));
-    window.docMap = new Map();
+    window.bodyBuffer = new RingBuffer(50, exbody);
     window.illustBuffer = new RingBuffer(10, async href => {
-      if (!docMap.has(href)) docMap.set(href, await exbody(href));
-      const body = docMap.get(href);
+      const body = await bodyBuffer.get(href);
       const top = body.querySelector('#illust [illust_id]');
-      return top.cloneNode(true);
+      const ele = document.createElement(top.tagName);
+      ele.src = top.src;
+      return ele;
     });
     window.listBuffer = new RingBuffer(3, url=>dom(url).then(d=>[...d.querySelectorAll('#main-container a[itemprop]')].map(a=>a.href)));
     changePage(document.location.href, 'reload');
