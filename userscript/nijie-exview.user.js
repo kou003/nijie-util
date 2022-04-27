@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.11.1
+// @version      3.11.2
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -311,6 +311,16 @@
     });
     illust.querySelector(':scope>p').appendChild(exLabel);
 
+    const topIllust = illust.querySelector('[illust_id]');
+    const loadPopups = e=>{
+      illust.querySelectorAll('.popup_illust').forEach(img=>{
+        const src = img.dataset.src;
+        if (src) {img.src = src; img.dataset.src='';}
+      })
+    }
+    topIllust.addEventListener('load', loadPopups);
+    topIllust.addEventListener('loadedmetadata', loadPopups);
+
     const exViewCheck = element.create('<input id="exView" type="checkbox" disabled>');
     viewCenter.insertAdjacentElement('afterbegin', exViewCheck);
     const exOpen = element.create('<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
@@ -323,6 +333,10 @@
       illust.style.setProperty('--total', imgs.length);
       imgs.forEach((img, i) => {
         //img.loading='lazy';
+        if (!topIllust.complete && !topIllust.readyState) {
+          img.dataset.src = img.src;
+          img.src = '';
+        }
         illust.appendChild(img);
         img.addEventListener('click', e => imgs[(i + 1) % imgs.length].scrollIntoView());
         illust.appendChild(exClose.cloneNode(true));
@@ -412,6 +426,7 @@
       const body = await bodyBuffer.get(href);
       const top = body.querySelector('#illust [illust_id]');
       const ele = document.createElement(top.tagName);
+      ele.onload = e => console.log('illust loaded', href);
       ele.src = top.src;
       return ele;
     });
