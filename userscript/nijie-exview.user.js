@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.11.2
+// @version      3.11.3
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -301,18 +301,8 @@
     const viewCenter = document.body.querySelector('#view-center-block');
 
     const illust = viewCenter.querySelector('#illust');
-    const exLabel = element.create('<label for="exView" />');
-    const illustAnk = illust.querySelector(':scope>p>a');
-    illustAnk.onclick = e => {exLabel.click(); return e.preventDefault()};
-    exLabel.appendChild(illustAnk);
-    exLabel.addEventListener('click', e=>{
-      const v=exLabel.querySelector('video');
-      if (v && !v.playing()) v.play();
-    });
-    illust.querySelector(':scope>p').appendChild(exLabel);
-
     const topIllust = illust.querySelector('[illust_id]');
-    const loadPopups = e=>{
+    const loadPopups = async e=>{
       illust.querySelectorAll('.popup_illust').forEach(img=>{
         const src = img.dataset.src;
         if (src) {img.src = src; img.dataset.src='';}
@@ -320,7 +310,18 @@
     }
     topIllust.addEventListener('load', loadPopups);
     topIllust.addEventListener('loadedmetadata', loadPopups);
+    const exLabel = element.create('<label for="exView" />');
+    const illustAnk = illust.querySelector(':scope>p>a');
+    illustAnk.onclick = e => {exLabel.click(); return e.preventDefault()};
+    exLabel.appendChild(illustAnk);
+    exLabel.addEventListener('click', e=>{
+      const v=exLabel.querySelector('video');
+      if (v && !v.playing()) v.play();
+      loadPopups();
+    });
+    illust.querySelector(':scope>p').appendChild(exLabel);
 
+    
     const exViewCheck = element.create('<input id="exView" type="checkbox" disabled>');
     viewCenter.insertAdjacentElement('afterbegin', exViewCheck);
     const exOpen = element.create('<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
