@@ -83,6 +83,68 @@
     `
   }
 
+  const RingBuffer = class {
+    #buf;
+    #map;
+    #cur;
+
+    constructor(n=1, defaultFanc, beforeDelete) {
+      this.#buf = new Array(n);
+      this.#map = new Map();
+      this.#cur = 0;
+      this.defaultFanc = defaultFanc;
+      this.beforeDelete = beforeDelete;
+    }
+
+    get(key) {
+      if (this.#map.has(key)) {
+        return this.#map.get(key);
+      }
+      if (typeof this.defaultFanc == 'function') {
+        const value = this.defaultFanc(key);
+        if (value instanceof Promise) {
+          return value.then(v=>this.set(key, v)).then(()=>this.get(key));
+        } else {
+          this.set(key, value);
+          return this.get(key);
+        }
+      }
+      return;
+    }
+
+    set(key, value) {
+      if (this.#map.has(key)) {
+        this.#map.set(key, value);
+        return;
+      }
+      const old = this.#buf[this.#cur];
+      if (typeof this.beforeDelete == 'function') {
+        const res = this.beforeDelete(old, this.get(old));
+        if (res instanceof Promise) return res.then(()=>this.#overSet(key, value))
+      }
+      return this.#overSet(key, value);
+    }
+
+    #overSet(key, value) {
+      const old = this.#buf[this.#cur];
+      this.#map.delete(old);
+      this.#buf[this.#cur] = key;
+      this.#cur = (this.#cur + 1) % this.#buf.length;
+      this.#map.set(key, value);
+    }
+
+    has(key) {
+      return this.#map.has(key);
+    }
+    
+  }
+
+  Object.defineProperty(HTMLMediaElement.prototype, 'playing', {
+    get: function(){
+        return !!(this.currentTime > 0 && !this.paused && !this.ended && this.readyState > 2);
+    }
+  })
+
   const element = {
     template: document.createElement('template'),
     create: function (string) {
@@ -179,21 +241,6 @@
     element.addEventListener('touchend', e=>clearTimeout(tid));
   }
 
-  const chachedHrefs = async url => {
-    if (window.fetchCache == void(0)) {
-      window.fetchCache = Array(3);
-      window.fetchCache.fill([void(0),void(0)]);
-      window.fetchCacheIndex = 0;
-    }
-    for (const [key, value] of window.fetchCache) if (key == url) {console.log('cache hit'); return value};
-    const doc = await fetch(url).then(r=>r.text()).then(t=>new DOMParser().parseFromString(t, 'text/html'));
-    const value = [...doc.querySelectorAll('#main-container a[itemprop]')].map(a=>a.href);
-    window.fetchCache[window.fetchCacheIndex++] = [url, value];
-    window.fetchCacheIndex %= window.fetchCache.length;
-    return value;
-  }
-
-
   const resolveUrl = async (params, pathname, num, p, d, cd) => {
     if (p < 1) return (d > 0) ? resolveUrl(params, pathname, 1, 1, d) : void(0);
     if (!cd && num < 0) return resolveUrl(params, pathname, num, p-1, d, true);
@@ -202,7 +249,8 @@
     const pureParams = new URLSearchParams(params);
     pureParams.delete('pathname');
     pureParams.delete('num');
-    const hrefs = await chachedHrefs(pathname + '?' + pureParams.toLocaleString());
+    const url = pathname + '?' + pureParams.toLocaleString();
+    const hrefs = await window.listBuffer.get(url);
     console.log(hrefs);
     if (hrefs.length == 0) return (d < 0) ? resolveUrl(params, pathname, num, p-1, d, true) : void(0)
     if (!!cd) num = hrefs.length - 1;
@@ -237,7 +285,7 @@
     exLabel.appendChild(illustA);
     exLabel.addEventListener('click', e=>{
       const v=exLabel.querySelector('video');
-      if (v) v.play();
+      if (v && !v.playing()) v.play();
     });
     illust.querySelector(':scope>p').appendChild(exLabel);
     illustA.onclick = e => {exLabel.click(); return e.preventDefault()};
@@ -302,7 +350,7 @@
             changePage(e.currentTarget.href);
             return !!e.preventDefault();
           };
-          if (!docMap.has(a.href)) exbody(a.href).then(d => docMap.set(a.href, d));
+        window.illustBuffer.get(url);
       }
       }));
   }
@@ -334,6 +382,13 @@
       return new Function('document', '$', t);
     }));
     window.docMap = new Map();
+    window.illustBuffer = new RingBuffer(10, async href => {
+      if (!docMap.has(href)) docMap.set(href, await exbody(href));
+      const body = docMap.get(href);
+      const top = body.querySelector('#illust [illust_id]');
+      return top.cloneNode(true);
+    });
+    window.listBuffer = new RingBuffer(3, url=>dom(url).then(d=>[...d.querySelectorAll('#main-container a[itemprop]')].map(a=>a.href)));
     changePage(document.location.href, 'reload');
     window.onscroll = e => document.body.dataset.scrollY = window.scrollY;
     window.onpopstate = e => changePage(document.location.href, 'pop');
