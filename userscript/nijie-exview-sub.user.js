@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.1.6
+// @version      1.3.0
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info/illust_view.php.php*
@@ -12,6 +12,8 @@
 // @match        https://sp.nijie.info/search.php*
 // @match        https://sp.nijie.info/search_all.php*
 // @match        https://sp.nijie.info/illust.php*
+// @match        https://sp.nijie.info/members_bookmark.php*
+// @match        https://sp.nijie.info/okazu.php*
 // @updateURL    https://github.com/kou003/nijie-util/raw/master/userscript/nijie-exview-sub.user.js
 // @downloadURL  https://github.com/kou003/nijie-util/raw/master/userscript/nijie-exview-sub.user.js
 // @grant        none
@@ -94,11 +96,21 @@
       params.set('pathname', location.pathname);
       if (!params.has('p')) params.set('p', 1);
       document.querySelectorAll('#main-container a[itemprop]').forEach((a, i)=>{
-        params.set('num', i);
+        params.set('_num', i);
         a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toLocaleString() : '');
+      });
+      document.querySelectorAll('#okazu .okazu-layout').forEach((block, i)=>{
+        block.querySelectorAll('a[href*="/view.php?id="]').forEach(a => {
+          params.set('_num', i % 10);
+          params.set('p', 1 + Math.floor(i / 10));
+          a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toLocaleString() : '');
+        });
       });
     }
     toggle.addEventListener('change', toggleFunc);
+    if (location.pathname == '/okazu.php') {
+      document.querySelector('#more-button').addEventListener('click', toggleFunc);
+    }
     toggleFunc();
 
     activateNextPage();

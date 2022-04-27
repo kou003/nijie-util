@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.10.0
+// @version      3.11.0
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -241,17 +241,41 @@
     if (p < 1) return (d > 0) ? resolveUrl(params, pathname, 1, 1, d) : void(0);
     if (!cd && num < 0) return resolveUrl(params, pathname, num, p-1, d, true);
 
+    if (pathname == '/okazu.php') {
+      if (num >= 10) return resolveUrl(params, pathname, 0, p+1, d);
+      const okazuType = params.get('type') || 'recent_now';
+      const okazuNum = Math.max(p - 1, 0) * 10;
+      const startTime = params.get('start_time');
+      const endTime = params.get('end_time');
+      const pureParams = new URLSearchParams({
+        type: okazuType,
+        num: okazuNum
+      });
+      if (startTime && endTime) {
+        pureParams.set('start_time', startTime);
+        pureParams.set('end_time', endTime);
+      }
+      const query = pureParams.toLocaleString();
+      const hrefs = await okazuBuffer.get(query);
+      params.set('p', p);
+      if (hrefs.length == 0) return (d < 0) ? resolveUrl(params, pathname, 9, p-1, d, true) : void(0);
+      if (!!cd) num = hrefs.length - 1;
+      if (num >= hrefs.length) return resolveUrl(params, pathname, 0, p+1, d);
+      console.log(hrefs);
+      params.set('_num', num);
+      const href = hrefs[num] + '#' + params.toLocaleString();
+      return href;
+    }
     params.set('p', p);
     const pureParams = new URLSearchParams(params);
     pureParams.delete('pathname');
-    pureParams.delete('num');
+    pureParams.delete('_num');
     const url = pathname + '?' + pureParams.toLocaleString();
     const hrefs = await listBuffer.get(url);
-    console.log(hrefs);
     if (hrefs.length == 0) return (d < 0) ? resolveUrl(params, pathname, num, p-1, d, true) : void(0)
     if (!!cd) num = hrefs.length - 1;
     if (num >= hrefs.length) return resolveUrl(params, pathname, 0, p+1, d);
-    params.set('num', num);
+    params.set('_num', num);
     const href = hrefs[num] + '#' + params.toLocaleString();
     return href;
   }
@@ -259,7 +283,7 @@
   const revUrl = async (hash, d, url) => {
     const params = new URLSearchParams(hash.replace('#','?'));
     const pathname = params.get('pathname');
-    const num = params.get('num');
+    const num = params.get('_num');
     const p = params.get('p') || 1;
     if (!pathname || num == null || p == null) return url;
     return resolveUrl(params, pathname, +num+d, +p, d);
@@ -391,7 +415,25 @@
       ele.src = top.src;
       return ele;
     });
-    window.listBuffer = new RingBuffer(3, url=>dom(url).then(d=>[...d.querySelectorAll('#main-container a[itemprop]')].map(a=>a.href)));
+    window.listBuffer = new RingBuffer(3, async url => {
+      const d = await dom(url);
+      const hrefs = [...d.querySelectorAll('#main-container a[itemprop]')].map(a=>a.href);
+      return hrefs;
+    });
+    window.okazuBuffer = new RingBuffer(3, async params => {
+      const options = {
+        "method": "POST",
+        "headers": {
+          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "x-requested-with": "XMLHttpRequest"
+        },
+        "body": params
+      }
+      const json = await fetch('https://sp.nijie.info/php/ajax/get_okazu.php', options).then(r=>r.json());
+      const d = new DOMParser().parseFromString(json.data, 'text/html');
+      const hrefs = [...d.querySelectorAll('.okazu-layout .title a[href*="/view.php?id="]')].map(a=>a.href);
+      return hrefs;
+    });
     changePage(document.location.href, 'reload');
     window.onscroll = e => document.body.dataset.scrollY = window.scrollY;
     window.onpopstate = e => changePage(document.location.href, 'pop');
