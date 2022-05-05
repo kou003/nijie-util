@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.11.3
+// @version      3.11.4
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -297,7 +297,8 @@
     exBookmark(document);
     reloadTriger(document);
     document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
-    const href = document.body.dataset.href;
+    const location = new URL(document.body.dataset.href);
+    location.hash = '';
     const viewCenter = document.body.querySelector('#view-center-block');
 
     const illust = viewCenter.querySelector('#illust');
@@ -321,6 +322,12 @@
     });
     illust.querySelector(':scope>p').appendChild(exLabel);
 
+    const viewTitle = document.querySelector('.view-title');
+    const titleAnker = document.createElement('a');
+    titleAnker.href = location.href;
+    titleAnker.target = '_blank';
+    titleAnker.appendChild(viewTitle.firstChild);
+    viewTitle.appendChild(titleAnker);
     
     const exViewCheck = element.create('<input id="exView" type="checkbox" disabled>');
     viewCenter.insertAdjacentElement('afterbegin', exViewCheck);
@@ -328,7 +335,7 @@
     const exClose = element.create('<label class="ex-close" for="exView"><i class="fa fa-angle-up"></i><label>');
     illust.appendChild(exOpen);
 
-    const popup_url = href.replace('view.php', 'view_popup.php');
+    const popup_url = location.href.replace('view.php', 'view_popup.php');
     dom(popup_url).then(doc => {
       const imgs = doc.querySelectorAll('.popup_illust');
       illust.style.setProperty('--total', imgs.length);
@@ -380,7 +387,7 @@
     Promise.all([[-1, 'li:first-of-type', 'left', 'next'], [+1, 'li:last-of-type', 'right', 'prev']].map(async args=>{
       const [d, q, t, u] = args;
       const btn = viewNav.querySelector(q);
-      const ank = btn.querySelector('a');
+      const ank = btn.querySelector('a:not(.do)');
       const oriUrl = ank ? ank.href : null;
       btn.innerHTML = '\u00a0';
       const url = await revUrl(location.hash, d, oriUrl);
