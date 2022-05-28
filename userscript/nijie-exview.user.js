@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.11.4
+// @version      3.11.5
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -302,13 +302,14 @@
     const viewCenter = document.body.querySelector('#view-center-block');
 
     const illust = viewCenter.querySelector('#illust');
-    const topIllust = illust.querySelector('[illust_id]');
+    const topIllust = illust.querySelector('[illust_id]') || illust.querySelector('a>img');
     const loadPopups = async e=>{
       illust.querySelectorAll('.popup_illust').forEach(img=>{
         const src = img.dataset.src;
         if (src) {img.src = src; img.dataset.src='';}
       })
     }
+    console.log(topIllust);
     topIllust.addEventListener('load', loadPopups);
     topIllust.addEventListener('loadedmetadata', loadPopups);
     const exLabel = element.create('<label for="exView" />');
@@ -432,8 +433,8 @@
     window.bodyBuffer = new RingBuffer(50, exbody);
     window.illustBuffer = new RingBuffer(10, async href => {
       const body = await bodyBuffer.get(href);
-      const top = body.querySelector('#illust [illust_id]');
-      const ele = document.createElement(top.tagName);
+      const top = body.querySelector('#illust [illust_id]') || body.querySelector('#illust a>img');
+      const ele = document.createElement(top?top.tagName:'img');
       ele.onload = e => console.log('illust loaded', href);
       ele.src = top.src;
       return ele;
