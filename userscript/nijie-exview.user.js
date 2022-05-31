@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.11.5
+// @version      3.12.0
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -191,7 +191,7 @@
     let d = new DOMParser().parseFromString(t, 'text/html');
     d.body.dataset.title = d.title;
     d.body.dataset.href = url;
-    d.body.dataset.scrollY = 105;
+    d.body.dataset.scrollY = (document.querySelector('#illust [illust_id]')) ? 105 : 60;
     return d;
   });
 
@@ -238,8 +238,16 @@
   }
 
   const resolveUrl = async (params, pathname, num, p, d, cd) => {
-    if (p < 1) return (d > 0) ? resolveUrl(params, pathname, 1, 1, d) : void(0);
+    if (p < 1) return (d > 0) ? resolveUrl(params, pathname, 0, 1, d) : void(0);
     if (!cd && num < 0) return resolveUrl(params, pathname, num, p-1, d, true);
+
+    if (params.has('id_list')) {
+      const ids = params.get('id_list').split(',');
+      if (num < 0) return (d > 0) ? resolveUrl(params, pathname, 0, 1, d) : void(0);
+      if (num >= ids.length) return (d < 0) ? resolveUrl(params, pathname, ids.length-1, 1, d) : void(0);
+      params.set('_num', num);
+      return `https://sp.nijie.info/view.php?id=${ids[num]}#${params.toLocaleString()}`;
+    }
 
     if (pathname == '/okazu.php') {
       if (num >= 10) return resolveUrl(params, pathname, 0, p+1, d);
