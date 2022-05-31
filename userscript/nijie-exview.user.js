@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.12.0
+// @version      3.12.1
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -449,7 +449,7 @@
     });
     window.listBuffer = new RingBuffer(3, async url => {
       const d = await dom(url);
-      const hrefs = [...d.querySelectorAll('#main-container a[itemprop]')].map(a=>a.href);
+      const hrefs = [...d.querySelectorAll('#main-container a[itemprop], #illust-list>a')].map(a=>a.href);
       return hrefs;
     });
     window.okazuBuffer = new RingBuffer(3, async params => {

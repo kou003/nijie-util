@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.4.0
+// @version      1.4.1
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info
@@ -115,7 +115,7 @@
         if (a != null) {
           const url = new URL(a.href);
           params.set('pathname', url.pathname);
-          if (url.pathname == '/okazu.php') params.set('type','recent_month');
+          if (url.pathname == '/okazu.php') params.set('type','day');
         } else if (illsutList.parentElement.id=='nuita_recommend_list') {
           params.set('pathname', location.pathname);
           const illustLayout = illsutList.querySelectorAll('.illust-layout');
