@@ -1,10 +1,9 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.4.1
+// @version      1.4.2
 // @description  nijie-exview-sub
 // @author       kou003
-// @match        https://sp.nijie.info
 // @match        https://sp.nijie.info/
 // @match        https://sp.nijie.info/index.php*
 // @match        https://sp.nijie.info/illust_view.php*
@@ -62,6 +61,7 @@
 
   const activateNextPage = () => {
     const pageContainer = document.querySelector('.paging-container');
+    if (!pageContainer) return;
     const right = pageContainer.querySelector('.right');
     if (!right.querySelector('.page_button_none')) return;
 
@@ -92,9 +92,13 @@
   const addHash = async (params, container) => {
     const toggle = document.querySelector('#toggle-rev>input');
     if (!params.has('p')) params.set('p', 1);
-    container.querySelectorAll('a[itemprop]').forEach((a, i)=>{
-      params.set('_num', i);
-      a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toLocaleString() : '');
+    container.querySelectorAll('.illust-layout')
+      .map(layout=>layout.parentElement)
+      .filter(a=>a.tagName=='A')
+      .forEach((a, i)=>{
+        if (a.tagName != 'A') return;
+        params.set('_num', i);
+        a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toLocaleString() : '');
     });
     container.querySelectorAll('#okazu .okazu-layout').forEach((block, i)=>{
       block.querySelectorAll('a[href*="/view.php?id="]').forEach(a => {
@@ -108,7 +112,7 @@
   const toggleFunc = async e => {
     const toggle = document.querySelector('#toggle-rev>input');
     localStorage['toggle-rev'] = +toggle.checked;
-    if (location.pathname == '/' || location.pathname == '/index.php') {
+    if (['/','/index.php'].includes(location.pathname)) {
       for (const illsutList of document.querySelectorAll('#illust-list')) {
         const params = new URLSearchParams(location.search);
         const a = illsutList.nextElementSibling.querySelector('a');
@@ -116,18 +120,18 @@
           const url = new URL(a.href);
           params.set('pathname', url.pathname);
           if (url.pathname == '/okazu.php') params.set('type','day');
-        } else if (illsutList.parentElement.id=='nuita_recommend_list') {
+        } else {
           params.set('pathname', location.pathname);
           const illustLayout = illsutList.querySelectorAll('.illust-layout');
           const idList = [...illustLayout].map(el=>el.getAttribute('illust_id'));
           params.set('id_list', idList);
         }
         addHash(params, illsutList);
-      };
+      }
     } else {
       const params = new URLSearchParams(location.search);
       params.set('pathname', location.pathname);
-      addHash(params, document.querySelectorAll('#main-container'));
+      addHash(params, document.querySelector('#main-container'));
     }
   }
 

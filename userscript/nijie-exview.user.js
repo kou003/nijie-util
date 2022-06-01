@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.12.1
+// @version      3.12.2
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -297,6 +297,20 @@
     return resolveUrl(params, pathname, +num+d, +p, d);
   }
 
+  const addHash = document => {
+    const idList = [...document.querySelectorAll('#nuita_reco_gallery .illust-layout')].map(il=>il.getAttribute('illust_id'));
+    const location = new URL(document.body.dataset.href);
+    const params = new URLSearchParams();
+    params.set('pathname',location.pathname);
+    params.set('id_list', idList);
+    document.querySelectorAll('#nuita_reco_gallery a[itemprop]').forEach((a,i)=>{
+      params.set('_num', i);
+      const url = new URL(a.href);
+      url.hash=params.toLocaleString();
+      a.href=url.toLocaleString();
+    });
+  }
+
   const exView = async (document) => {
     if (document.body.dataset.extend) return;
     document.body.dataset.extend = true;
@@ -449,7 +463,10 @@
     });
     window.listBuffer = new RingBuffer(3, async url => {
       const d = await dom(url);
-      const hrefs = [...d.querySelectorAll('#main-container a[itemprop], #illust-list>a')].map(a=>a.href);
+      const hrefs = [...d.querySelectorAll('.illust-layout')]
+        .map(layout=>layout.parentElement)
+        .filter(a=>a.tagName=='A')
+        .map(a=>a.href);
       return hrefs;
     });
     window.okazuBuffer = new RingBuffer(3, async params => {
