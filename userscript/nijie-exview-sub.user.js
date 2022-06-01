@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.4.2
+// @version      1.4.3
 // @description  nijie-exview-sub
 // @author       kou003
+// @match        https://sp.nijie.info
 // @match        https://sp.nijie.info/
 // @match        https://sp.nijie.info/index.php*
 // @match        https://sp.nijie.info/illust_view.php*
@@ -136,6 +137,8 @@
   }
 
   const main = async () => {
+    if (!location.pathname.match(/^\/((index|illust_view|index_like_illust|index_tag|bookmark|history_illust|history_nuita|search|search_all|illust|members_bookmark|okazu|dojin)\.php)?$/)) return;
+
     setStyle();
 
     document.querySelector('#head-right').insertAdjacentHTML('afterbegin', `<label id="toggle-rev" class="float-left"><input type="checkbox"><div></div></label>`);
