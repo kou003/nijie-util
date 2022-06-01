@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.12.2
+// @version      3.12.3
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -318,6 +318,7 @@
     loadScript(document);
     exBookmark(document);
     reloadTriger(document);
+    addHash(document);
     document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
     const location = new URL(document.body.dataset.href);
     location.hash = '';
