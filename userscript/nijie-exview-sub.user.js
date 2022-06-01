@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.4.3
+// @version      1.4.4
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info
@@ -93,7 +93,7 @@
   const addHash = async (params, container) => {
     const toggle = document.querySelector('#toggle-rev>input');
     if (!params.has('p')) params.set('p', 1);
-    container.querySelectorAll('.illust-layout')
+    [...container.querySelectorAll('.illust-layout')]
       .map(layout=>layout.parentElement)
       .filter(a=>a.tagName=='A')
       .forEach((a, i)=>{
