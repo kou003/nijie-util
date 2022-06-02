@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.12.3
+// @version      3.12.4
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -80,6 +80,32 @@
     }
 
     #manga,#filter{display:none}
+
+    #toggle-rev input {
+      display: none;
+    }
+    #toggle-rev div {
+      padding-top: 5px;
+    }
+    #toggle-rev div::before {
+      content: "";
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid gray;
+      border-radius: 50%;
+      background-color: white;
+      box-sizing: border-box;
+    }
+    #toggle-rev input:checked ~ div::before {
+      content: "";
+      border: 2px solid white;
+      background-color: gray;
+    }
+    .paging-container .left, .paging-container .right {
+      float: none;
+      width: auto;
+    }
     `
   }
 
@@ -191,7 +217,7 @@
     let d = new DOMParser().parseFromString(t, 'text/html');
     d.body.dataset.title = d.title;
     d.body.dataset.href = url;
-    d.body.dataset.scrollY = (document.querySelector('#illust [illust_id]')) ? 105 : 60;
+    d.body.dataset.scrollY = 105;
     return d;
   });
 
@@ -297,7 +323,18 @@
     return resolveUrl(params, pathname, +num+d, +p, d);
   }
 
+  const updateToggle = e => {
+    const t = window.document.querySelector('#toggle-rev>input').checked;
+    window.document.querySelectorAll('.gallery-link').forEach(a=>a.href=t?a.hash:a.origin)
+  }
+
   const addHash = document => {
+    document.querySelector('#head-right').insertAdjacentHTML('afterbegin', `<label id="toggle-rev" class="float-left"><input type="checkbox"><div></div></label>`);
+    const toggle = document.querySelector('#toggle-rev>input');
+    console.log(toggle);
+    toggle.checked = !!+localStorage['toggle-rev'];
+    toggle.addEventListener('click', updateToggle);
+
     const idList = [...document.querySelectorAll('#nuita_reco_gallery .illust-layout')].map(il=>il.getAttribute('illust_id'));
     const location = new URL(document.body.dataset.href);
     const params = new URLSearchParams();
@@ -306,8 +343,10 @@
     document.querySelectorAll('#nuita_reco_gallery a[itemprop]').forEach((a,i)=>{
       params.set('_num', i);
       const url = new URL(a.href);
-      url.hash=params.toLocaleString();
-      a.href=url.toLocaleString();
+      url.hash = params.toLocaleString();
+      a.classList.add('gallery-link');
+      a.dataset.origin = a.href;
+      a.dataset.hash = url.toLocaleString();
     });
   }
 
@@ -401,6 +440,7 @@
       history.replaceState({}, dataset.title, dataset.href);
     }
     scroll(0, dataset.scrollY);
+    updateToggle();
     const v = document.querySelector('#illust video');
     if (v) v.play();
 
