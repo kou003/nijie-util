@@ -435,7 +435,7 @@
       t = t.replace(/setTimeout[\s\S]*?}, 1\);/, '');
       t = t.replace(/,\s*menuWidth = burger.outerWidth\(\)/, '');
       t = t.replaceAll('menuWidth', 'burger.outerWidth()');
-      console.log(t);
+      t = t.replace(`window.location.href.slice(window.location.href.indexOf('?') + 1)`,`window.location.search.slice(1)`);
     } else if (src.match('view.js')) {
       t = t.replace(/function setSwipe[\s\S]*setSwipe\(\);/, '');
       t = t.replace(/nuita_lock == true/, 'nuita_lock||!confirm("抜いた?")');
