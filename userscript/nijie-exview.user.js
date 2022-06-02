@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.12.4
+// @version      3.12.5
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -325,7 +325,8 @@
 
   const updateToggle = e => {
     const t = window.document.querySelector('#toggle-rev>input').checked;
-    window.document.querySelectorAll('.gallery-link').forEach(a=>a.href=t?a.hash:a.origin)
+    localStorage['toggle-rev'] = +t;
+    window.document.querySelectorAll('.gallery-link').forEach(a=>a.href=a.dataset[t?'hash':'origin']);
   }
 
   const addHash = document => {
