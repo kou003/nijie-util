@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-adblock
 // @namespace    https://github.com/kou003/
-// @version      1.4.2
+// @version      1.4.3
 // @description  nijie-adblock
 // @author       kou003
 // @match        https://sp.nijie.info/*
@@ -13,7 +13,7 @@
 {
   'use strict';
   const main = () => {
-    document.head.appendChild(document.createElement('style')).textContent = '#inter_background,#header_ad,#center_ad,#footer_ad,#view_header_ad,#sp_view_popup_header{display:none}header{position:fixed}body{padding-top:50px}';
+    document.head.appendChild(document.createElement('style')).textContent = '#inter_background,#header_ad,#center_ad,#footer_ad,#view_header_ad,#sp_view_popup_header{display:none}header{position:absolute}body{padding-top:50px}';
   }
   if (document.readyState == 'loading') {
     document.addEventListener('DOMContentLoaded', main);
