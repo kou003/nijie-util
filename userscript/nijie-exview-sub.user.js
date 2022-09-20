@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.5.0
+// @version      1.5.1
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info
@@ -272,7 +272,7 @@
     });
 
     const sort_num = params.get('sort') ?? 0;
-    const ill = [...illustList.querySelectorAll('.illust-layout')];
+    const ill = [...illustList.querySelectorAll(':scope>a')];
     if (sort_num == 1) illustList.replaceChildren(...ill.reverse());
     if (sort_num > 1) {
       const rand = new Random(sort_num);
@@ -286,7 +286,7 @@
     }
 
     params.set('pathname', location.pathname);
-    const idList = ill.map(el=>el.getAttribute('illust_id'));
+    const idList = [...illustList.querySelectorAll('.illust-layout')].map(el=>el.getAttribute('illust_id'));
     params.set('id_list', idList);
     addHash(params, illustList);
   }
