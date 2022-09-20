@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.5.1
+// @version      1.5.2
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info
@@ -237,6 +237,7 @@
           div.appendChild(a);
           const layout = a.querySelector('.illust-layout');
           idxId = layout.getAttribute('illust_id');
+          a.querySelector('img[illust_id]').loading = 'lazy';
           if (counter) counter.textContent = 1+(+counter.textContent);
         });
       }
