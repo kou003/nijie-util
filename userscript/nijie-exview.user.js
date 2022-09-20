@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.12.5
+// @version      3.12.6
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -264,9 +264,6 @@
   }
 
   const resolveUrl = async (params, pathname, num, p, d, cd) => {
-    if (p < 1) return (d > 0) ? resolveUrl(params, pathname, 0, 1, d) : void(0);
-    if (!cd && num < 0) return resolveUrl(params, pathname, num, p-1, d, true);
-
     if (params.has('id_list')) {
       const ids = params.get('id_list').split(',');
       if (num < 0) return (d > 0) ? resolveUrl(params, pathname, 0, 1, d) : void(0);
@@ -274,6 +271,9 @@
       params.set('_num', num);
       return `https://sp.nijie.info/view.php?id=${ids[num]}#${params.toLocaleString()}`;
     }
+
+    if (p < 1) return (d > 0) ? resolveUrl(params, pathname, 0, 1, d) : void(0);
+    if (!cd && num < 0) return resolveUrl(params, pathname, num, p-1, d, true);
 
     if (pathname == '/okazu.php') {
       if (num >= 10) return resolveUrl(params, pathname, 0, p+1, d);
