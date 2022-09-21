@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.13.0
+// @version      3.13.1
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -364,6 +364,7 @@
     const pathname = params.get('pathname');
     params.delete('pathname');
     params.delete('_num');
+    params.delete('id_list');
     const illustId = new URLSearchParams(location.search).get('id');
     const href = `${pathname}?${params.toLocaleString()}#${illustId}`;
     document.querySelector('#menu')?.insertAdjacentHTML('afterend', `<div class="list-icon"><a href="${href}"><i class="fa-solid fa-table-cells"></i></a></div>`);

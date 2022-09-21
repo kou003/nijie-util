@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.6.0
+// @version      1.6.1
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info
@@ -278,11 +278,9 @@
     if (sort_num == 1) illustList.replaceChildren(...ill.reverse());
     if (sort_num > 1) {
       const rand = new Random(sort_num);
-      const n = ill.length;
-      for (let i=0; i<n; i++) {
-        const a = Math.abs(rand.next()) % n;
-        const b = Math.abs(rand.next()) % n;
-        [ill[a], ill[b]] = [ill[b], ill[a]];
+      for (let i=ill.length-1; i>0; i--) {
+        const j = Math.abs(rand.next()) % (i+1);
+        [ill[i], ill[j]] = [ill[j], ill[i]];
       }
       illustList.replaceChildren(...ill); 
     }
@@ -320,7 +318,7 @@
     if (p < 0) await bookmarkAll();
   }
 
-  const jumpHashIllust = () => {
+  const jumpHashIllust = async () => {
     const id = location.hash.replace('#','').trim();
     document.querySelector(`[illust_id="${id}"]`)?.scrollIntoView({block: 'center', inline: 'center'});
   }
