@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.5.3
+// @version      1.6.0
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info
@@ -336,7 +336,7 @@
     }
     toggleFunc();
 
-    if (location.pathname == '/bookmark.php') bookmarkMod();
+    if (location.pathname == '/bookmark.php') await bookmarkMod();
 
     activateNextPage();
   }
