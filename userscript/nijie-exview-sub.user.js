@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.6.1
+// @version      1.6.2
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info
@@ -265,7 +265,8 @@
     document.querySelector('.paging-wrapper')?.remove();
     const illustList = document.querySelector('#illust-list');
     illustList.innerHTML = localStorage['bookmark/'+id] ?? '';
-    scrollTo(history.state);
+
+    if (!location.hash) window.scrollTo_(history.state);
 
     const isTwoColumns = !!$.cookie("expansion-layout");
     illustList.querySelectorAll('.illust-layout').forEach(il=>{
@@ -344,7 +345,8 @@
 
     activateNextPage();
   }
-    
+  window.scrollTo_ = window.scrollTo;
+  window.scrollTo = console.log;
   if (document.readyState == 'loading') {
     document.addEventListener('DOMContentLoaded', main);
   } else {
