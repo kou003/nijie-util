@@ -129,9 +129,8 @@
 
   const activateNextPage = () => {
     const pageContainer = document.querySelector('.paging-container');
-    if (!pageContainer) return;
-    const right = pageContainer.querySelector('.right');
-    if (!right.querySelector('.page_button_none')) return;
+    const right = pageContainer?.querySelector('.right');
+    if (!right?.querySelector('.page_button_none')) return;
 
     const params = new URLSearchParams(location.search);
     const p = +params.get('p') || 1;
@@ -179,7 +178,7 @@
     });
   }
 
-  const toggleFunc = async e => {
+  const toggleFunc = e => {
     const toggle = document.querySelector('#toggle-rev>input');
     localStorage['toggle-rev'] = +toggle.checked;
     if (['/','/index.php'].includes(location.pathname)) {
