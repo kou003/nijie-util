@@ -320,6 +320,11 @@
     if (p < 0) await bookmarkAll();
   }
 
+  const jumpHashIllust = () => {
+    const id = location.hash.replace('#','').trim();
+    document.querySelector(`[illust_id="${id}"]`)?.scrollIntoView({block: 'center', inline: 'center'});
+  }
+
   const main = async () => {
     if (!location.pathname.match(/^\/((index|illust_view|index_like_illust|index_tag|bookmark|history_illust|history_nuita|search|search_all|illust|members_bookmark|okazu|dojin)\.php)?$/)) return;
 
@@ -336,6 +341,8 @@
     toggleFunc();
 
     if (location.pathname == '/bookmark.php') await bookmarkMod();
+
+    jumpHashIllust();
 
     activateNextPage();
   }
