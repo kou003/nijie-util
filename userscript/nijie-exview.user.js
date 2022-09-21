@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.12.6
+// @version      3.12.7
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -105,6 +105,12 @@
     .paging-container .left, .paging-container .right {
       float: none;
       width: auto;
+    }
+
+    .list-icon {
+      float: left;
+      font-size: 30px;
+      margin: 2px;
     }
     `
   }
@@ -348,6 +354,7 @@
       a.classList.add('gallery-link');
       a.dataset.origin = a.href;
       a.dataset.hash = url.toLocaleString();
+      a.target = '_new';
     });
   }
 

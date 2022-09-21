@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.5.2
+// @version      1.5.3
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info
@@ -167,12 +167,14 @@
         if (a.tagName != 'A') return;
         params.set('_num', i);
         a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toLocaleString() : '');
+        a.target = '_new';
     });
     container.querySelectorAll('#okazu .okazu-layout').forEach((block, i)=>{
       block.querySelectorAll('a[href*="/view.php?id="]').forEach(a => {
         params.set('_num', i % 10);
         params.set('p', 1 + Math.floor(i / 10));
         a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toLocaleString() : '');
+        a.target = '_new';
       });
     });
   }
