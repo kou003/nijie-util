@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.13.1
+// @version      3.13.2
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -354,7 +354,7 @@
       a.classList.add('gallery-link');
       a.dataset.origin = a.href;
       a.dataset.hash = url.toLocaleString();
-      a.target = '_new';
+      //a.target = '_new';
     });
   }
 
