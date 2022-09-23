@@ -275,7 +275,7 @@
       if (num < 0) return (d > 0) ? resolveUrl(params, pathname, 0, 1, d) : void(0);
       if (num >= ids.length) return (d < 0) ? resolveUrl(params, pathname, ids.length-1, 1, d) : void(0);
       params.set('_num', num);
-      return `https://sp.nijie.info/view.php?id=${ids[num]}#${params.toLocaleString()}`;
+      return `https://sp.nijie.info/view.php?id=${ids[num]}#${params.toString()}`;
     }
 
     if (p < 1) return (d > 0) ? resolveUrl(params, pathname, 0, 1, d) : void(0);
@@ -295,7 +295,7 @@
         pureParams.set('start_time', startTime);
         pureParams.set('end_time', endTime);
       }
-      const query = pureParams.toLocaleString();
+      const query = pureParams.toString();
       const hrefs = await okazuBuffer.get(query);
       params.set('p', p);
       if (hrefs.length == 0) return (d < 0) ? resolveUrl(params, pathname, 9, p-1, d, true) : void(0);
@@ -303,20 +303,20 @@
       if (num >= hrefs.length) return resolveUrl(params, pathname, 0, p+1, d);
       console.log(hrefs);
       params.set('_num', num);
-      const href = hrefs[num] + '#' + params.toLocaleString();
+      const href = hrefs[num] + '#' + params.toString();
       return href;
     }
     params.set('p', p);
     const pureParams = new URLSearchParams(params);
     pureParams.delete('pathname');
     pureParams.delete('_num');
-    const url = pathname + '?' + pureParams.toLocaleString();
+    const url = pathname + '?' + pureParams.toString();
     const hrefs = await listBuffer.get(url);
     if (hrefs.length == 0) return (d < 0) ? resolveUrl(params, pathname, num, p-1, d, true) : void(0)
     if (!!cd) num = hrefs.length - 1;
     if (num >= hrefs.length) return resolveUrl(params, pathname, 0, p+1, d);
     params.set('_num', num);
-    const href = hrefs[num] + '#' + params.toLocaleString();
+    const href = hrefs[num] + '#' + params.toString();
     return href;
   }
 
@@ -350,10 +350,10 @@
     document.querySelectorAll('#nuita_reco_gallery a[itemprop]').forEach((a,i)=>{
       params.set('_num', i);
       const url = new URL(a.href);
-      url.hash = params.toLocaleString();
+      url.hash = params.toString();
       a.classList.add('gallery-link');
       a.dataset.origin = a.href;
-      a.dataset.hash = url.toLocaleString();
+      a.dataset.hash = url.toString();
       //a.target = '_new';
     });
   }
@@ -366,7 +366,7 @@
     params.delete('_num');
     params.delete('id_list');
     const illustId = new URLSearchParams(location.search).get('id');
-    const href = `${pathname}?${params.toLocaleString()}#${illustId}`;
+    const href = `${pathname}?${params.toString()}#${illustId}`;
     document.querySelector('#menu')?.insertAdjacentHTML('afterend', `<div class="list-icon"><a href="${href}"><i class="fa-solid fa-table-cells"></i></a></div>`);
   }
 

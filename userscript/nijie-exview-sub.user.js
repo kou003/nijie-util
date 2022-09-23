@@ -137,14 +137,14 @@
     const path = location.pathname;
     
     params.set('p', p+1);
-    const rUrl = `${path}?${params.toLocaleString()}`;
+    const rUrl = `${path}?${params.toString()}`;
     right.innerHTML = `<p class="page_button"><a href="${rUrl}" class="next">&gt;</a></p>`;
 
     const center = pageContainer.querySelector('.center ul');
     center.innerHTML = '';
     for (let i=Math.max(1, p-3); i<p+2; i++) {
       params.set('p', i);
-      const cUrl = `${path}?${params.toLocaleString()}`;
+      const cUrl = `${path}?${params.toString()}`;
       const d = (i == p) ? 'class="do"' : '';
       center.insertAdjacentHTML('beforeend', `<li><a href="${cUrl}" ${d}>${i}</a></li>`);
     }
@@ -152,7 +152,7 @@
     const left = pageContainer.querySelector('.left');
     if (left.querySelector('.page_button_none')) return;
     params.set('p', p-1);
-    const lUrl = `${path}?${params.toLocaleString()}`;
+    const lUrl = `${path}?${params.toString()}`;
     left.innerHTML = `<p class="page_button"><a href="${lUrl}" class="back">&lt;</a></p>`;
   }
 
@@ -165,14 +165,14 @@
       .forEach((a, i)=>{
         if (a.tagName != 'A') return;
         params.set('_num', i);
-        a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toLocaleString() : '');
+        a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toString() : '');
         //a.target = '_new';
     });
     container.querySelectorAll('#okazu .okazu-layout').forEach((block, i)=>{
       block.querySelectorAll('a[href*="/view.php?id="]').forEach(a => {
         params.set('_num', i % 10);
         params.set('p', 1 + Math.floor(i / 10));
-        a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toLocaleString() : '');
+        a.href = a.href.split('#')[0] + (toggle.checked ? '#' + params.toString() : '');
         a.target = '_new';
       });
     });
@@ -300,7 +300,7 @@
     const params = new URLSearchParams(location.search);
     const p = +params.get('p');
     params.set('p', (p < 0) ? 1 : -1);
-    aside.insertAdjacentHTML('beforeend', `<a id="toggleAll" class="bm-link-btn" href="${'?'+params.toLocaleString()}">${(p < 0) ? 'TOP' : 'ALL'}</a>`);
+    aside.insertAdjacentHTML('beforeend', `<a id="toggleAll" class="bm-link-btn" href="${'?'+params.toString()}">${(p < 0) ? 'TOP' : 'ALL'}</a>`);
     $($.cookie("expansion-layout") ? "#two-cell" : "#three-cell").addClass('do');
     $('.header-button.two-lines').on('click', function() {
       $('.illust-layout').removeClass('three-lines');
