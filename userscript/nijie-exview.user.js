@@ -241,8 +241,7 @@
       const p = bmButton.querySelector('p');
       if (p.id == 'bookmark') {
         if (confirm('ブックマークに追加してもよろしいですか？')) {
-          bmframe.src = bmButton.href;
-          bmwin.classList.add('open');
+          fetch(bmButton.href).then(changePage(window.document.body.dataset.href, 'reload'));
         }
       } else {
         bmframe.src = bmButton.href;
