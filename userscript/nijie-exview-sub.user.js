@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.6.3
+// @version      1.7.0
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info
@@ -221,9 +221,12 @@
     }
   }
 
-  const bookmarkUpdate = async (id=0) => {
+  const bookmarkUpdate = async (id=0, shallow=false) => {
     const over = document.querySelector(".loading-over");
     const counter = over.querySelector('.loading-counter');
+    const oldDiv = document.createElement('div');
+    if (shallow) oldDiv.innerHTML = localStorage['bookmark/'+id] ?? '';
+    const oldTop = oldDiv.querySelector('a')?.href;
     try {
       over?.classList.add('enable');
       const div = document.createElement('div');
@@ -231,18 +234,20 @@
         .then(r=>r.text()).then(t=>new DOMParser().parseFromString(t, 'text/html'))
         .then(d=>d.querySelector('#illust-list .illust-layout')?.getAttribute('illust_id') ?? null);
       let idxId = null;
+      pageloop:
       for (let p=1; idxId != endId; p++) {
         const doc = await fetch(`/bookmark.php?p=${p}&id=${id}&sort=0`)
           .then(r=>r.text()).then(t=>new DOMParser().parseFromString(t, 'text/html'));
-        doc.querySelectorAll('#illust-list>a').forEach(a=>{
+        for (const a of doc.querySelectorAll('#illust-list>a')) {
+          if (a.href == oldTop) break pageloop;
           div.appendChild(a);
           const layout = a.querySelector('.illust-layout');
           idxId = layout.getAttribute('illust_id');
           a.querySelector('img[illust_id]').loading = 'lazy';
           if (counter) counter.textContent = 1+(+counter.textContent);
-        });
+        };
       }
-      localStorage['bookmark/'+id] = div.innerHTML;
+      localStorage['bookmark/'+id] = div.innerHTML+oldDiv.innerHTML;
       console.log(localStorage['bookmark/'+id]);
     }
     finally {
@@ -259,7 +264,11 @@
     aside.insertAdjacentHTML('beforeend', `<a id="bmUpdate" class="bm-link-btn icon" href><i class="fa-solid fa-rotate-right"></i></a><a id="bmNewer" class="bm-link-btn icon" href="${bp+0}"><i class="fa-solid fa-arrow-down"></i></a><a id="bmOlder" class="bm-link-btn icon" href="${bp+1}"><i class="fa-solid fa-arrow-up"></i></a><a id="bmShuffle" class="bm-link-btn icon" href="${bp+(+new Date()+2)}"><i class="fa-solid fa-shuffle"></i></a>`);
     document.querySelector('#bmUpdate').addEventListener('click', e=>{
       e.preventDefault();
-      confirm('LocalStorageを更新しますか?') && bookmarkUpdate(id).then(()=>location.reload());
+      if (confirm('LocalStorageを簡易更新しますか?')) {
+        bookmarkUpdate(id, shallow=true).then(()=>location.reload());
+      } else if (confirm('LocalStorageを全件更新しますか?')) {
+        bookmarkUpdate(id).then(()=>location.reload());
+      }
     });
     document.body.insertAdjacentHTML('afterbegin','<div class="loading-over"><div class="spinner"></div><div class="loading-counter"></div></div>');
     document.querySelector('.paging-wrapper')?.remove();
