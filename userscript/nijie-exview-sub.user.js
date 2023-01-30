@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview-sub
 // @namespace    https://github.com/kou003/
-// @version      1.7.0
+// @version      1.7.1
 // @description  nijie-exview-sub
 // @author       kou003
 // @match        https://sp.nijie.info
@@ -156,12 +156,16 @@
     left.innerHTML = `<p class="page_button"><a href="${lUrl}" class="back">&lt;</a></p>`;
   }
 
+  /**
+   * ハッシュを加える
+   * @param {URLSearchParams} params 
+   * @param {HTMLElement} container 
+   */
   const addHash = async (params, container) => {
     const toggle = document.querySelector('#toggle-rev>input');
     if (!params.has('p')) params.set('p', 1);
     [...container.querySelectorAll('.illust-layout')]
-      .map(layout=>layout.parentElement)
-      .filter(a=>a.tagName=='A')
+      .map(layout=>layout.querySelector('a') ?? layout.parentElement)
       .forEach((a, i)=>{
         if (a.tagName != 'A') return;
         params.set('_num', i);
@@ -185,11 +189,11 @@
       for (const illustList of document.querySelectorAll('#illust-list')) {
         const params = new URLSearchParams(location.search);
         const a = illustList.nextElementSibling.querySelector('a');
-        if (a != null) {
+        if (a != null) { // もっとみるボタンがリンク
           const url = new URL(a.href);
           params.set('pathname', url.pathname);
           if (url.pathname == '/okazu.php') params.set('type','day');
-        } else {
+        } else { // もっとみるボタンが展開ボタン
           params.set('pathname', location.pathname);
           const illustLayout = illustList.querySelectorAll('.illust-layout');
           const idList = [...illustLayout].map(el=>el.getAttribute('illust_id'));

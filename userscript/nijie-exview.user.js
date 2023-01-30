@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.13.5
+// @version      3.13.6
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -388,7 +388,7 @@
     const loadPopups = async e=>{
       illust.querySelectorAll('.popup_illust').forEach(img=>{
         const src = img.dataset.src;
-        if (src) {img.src = src; img.dataset.src='';}
+        if (src) {img.src = src; }
       })
     }
     console.log(topIllust);
@@ -423,9 +423,9 @@
       const imgs = doc.querySelectorAll('.popup_illust');
       illust.style.setProperty('--total', imgs.length);
       imgs.forEach((img, i) => {
-        //img.loading='lazy';
+        if (i>5) img.loading='lazy';
+        img.dataset.src = img.src;
         if (!topIllust.complete && !topIllust.readyState) {
-          img.dataset.src = img.src;
           img.src = '';
         }
         illust.appendChild(img);
