@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-error-cache
 // @namespace    https://github.com/kou003/
-// @version      1.0.0
+// @version      1.0.1
 // @description  nijie-error-cache
 // @author       kou003
 // @match        https://sp.nijie.info/*
@@ -14,7 +14,7 @@
 {
   'use strict';
   const setHandler = () => {
-    documment.querySelectorAll('[src^="//pic.nijie.net"]:not(data-have-handler)')
+    document.querySelectorAll('[src^="//pic.nijie.net"]:not(data-have-handler)')
       .forEach(img => img.addEventListener('error', () => {
         img.dataset.haveHandler = true;
         const url = new URL(img.src);
