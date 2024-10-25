@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.13.6
+// @version      3.13.7
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -224,6 +224,7 @@
     d.body.dataset.title = d.title;
     d.body.dataset.href = url;
     d.body.dataset.scrollY = 105;
+    d.querySelectorAll('.illust-image img').forEach(img=>img.loading='lazy');
     return d;
   });
 
