@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      4.0.1
+// @version      4.0.2
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -19,14 +19,17 @@
  * ハッシュ経由でページ間を移動するときに使うナビゲーション状態。
  * URLハッシュを `new URLSearchParams(hash.slice(1))` で解析した結果に対応する。
  *
+ * ハッシュ上のキー名と NavState のプロパティ名の対応:
+ * - `_num`      ↔ `num`      (内部名と外部名が異なる唯一のキー)
+ * - `p`         ↔ `p`
+ * - `pathname`  ↔ `pathname`
+ * - その他のキーはそのまま `extra` に格納される
+ *
  * @typedef {Object} NavState
- * @property {string}      pathname  - 遷移元リストページのパス名 (例: '/illust_list.php', '/okazu.php')
- * @property {number}      num       - リストページ内でのイラストの位置 (0始まり)
- * @property {number}      p         - リストページのページ番号 (1始まり)
- * @property {string}      [id_list] - カンマ区切りのイラストID一覧 (id_listモード時のみ)
- * @property {string}      [type]    - okazuページの種別 (okazuモード時のみ)
- * @property {string}      [start_time] - okazu絞り込み開始日時 (okazuモード時のみ)
- * @property {string}      [end_time]   - okazu絞り込み終了日時 (okazuモード時のみ)
+ * @property {string} pathname     - 遷移元リストページのパス名 (例: '/illust_list.php', '/okazu.php')
+ * @property {number} num          - リストページ内でのイラストの位置 (0始まり)。ハッシュの `_num` に対応
+ * @property {number} p            - リストページのページ番号 (1始まり)
+ * @property {Object} extra        - ハッシュ内の追加パラメータ (id_list / type / start_time / end_time など)
  */
 
 // ─── スタイル ────────────────────────────────────────────────────────────────
@@ -109,6 +112,38 @@ const fetchDom = async (url) => {
 // ─── URLハッシュによるナビゲーションリンクの書き換え ─────────────────────────
 
 /**
+ * NavState をURLハッシュ文字列（`#` なし）にシリアライズする。
+ * `num` はハッシュ上のキー名 `_num` に変換する。
+ *
+ * @param {NavState} state
+ * @returns {string} URLSearchParams形式のハッシュ文字列
+ */
+const serializeNavState = ({ pathname, num, p, extra }) => {
+  return new URLSearchParams({ pathname, p, _num: num, ...extra }).toString();
+};
+
+/**
+ * URLハッシュ文字列を解析して {@link NavState} を返す。
+ * ハッシュが不正・情報不足の場合は `null` を返す。
+ *
+ * @param {string} hash - `location.hash` の値 (`#` を含む文字列)
+ * @returns {NavState|null}
+ */
+const parseNavState = (hash) => {
+  const params   = new URLSearchParams(hash.slice(1));
+  const pathname = params.get('pathname');
+  const _num     = params.get('_num');
+  const p        = params.get('p');
+  if (!pathname || _num == null) return null;
+
+  // pathname / _num / p を除いた残りを extra に格納する
+  const KNOWN_KEYS = new Set(['pathname', '_num', 'p']);
+  const extra = Object.fromEntries([...params].filter(([k]) => !KNOWN_KEYS.has(k)));
+
+  return { pathname, num: +_num, p: p != null ? +p : 1, extra };
+};
+
+/**
  * 通常リストページからイラストページのURL一覧を取得する。
  *
  * @param {string} listPageUrl - リストページの完全URL
@@ -147,87 +182,71 @@ const fetchOkazuHrefs = async (postBody) => {
  * ナビゲーション状態と移動方向から遷移先URLを解決する。
  * ページ末尾/先頭を超えた場合は隣のリストページへ折り返す。
  *
- * 動作モードはハッシュの内容で自動判別する:
- * - `id_list` パラメータあり → id_listモード（リスト取得不要）
+ * 動作モードは `extra` の内容で自動判別する:
+ * - `extra.id_list` あり         → id_listモード（リスト取得不要）
  * - `pathname === '/okazu.php'`  → okazuモード（Ajax取得）
- * - それ以外                    → 通常リストページモード
+ * - それ以外                     → 通常リストページモード
  *
- * @param {NavState} state      - 現在のナビゲーション状態
- * @param {number}   direction  - 移動方向 (+1: 次, -1: 前)
+ * @param {NavState} state     - 解決したい位置のナビゲーション状態 (`num` は移動後の値を渡す)
+ * @param {number}   direction - 移動方向 (+1: 次, -1: 前)
  * @param {boolean}  [isClamped=false]
  *   `true` のとき、`num` が範囲外でも前後ページへの再帰を行わず、
  *   そのページの末尾要素へクランプする。
  *   ページ境界をまたぐ再帰呼び出し時に内部で使用する。
  * @returns {Promise<string|undefined>} 遷移先URL。存在しない場合は `undefined`
  */
-const resolveUrl = async ({ pathname, num, p, ...rest }, direction, isClamped = false) => {
-  // id_list モード: リストページへのアクセス不要
-  if (rest.id_list != null) {
-    const ids = rest.id_list.split(',');
-    if (num < 0)           return direction > 0 ? resolveUrl({ pathname, num: 0,            p: 1, ...rest }, direction) : undefined;
-    if (num >= ids.length) return direction < 0 ? resolveUrl({ pathname, num: ids.length-1, p: 1, ...rest }, direction) : undefined;
-    const params = new URLSearchParams({ pathname, num, p, id_list: rest.id_list, _num: num });
-    return `https://sp.nijie.info/view.php?id=${ids[num]}#${params.toString()}`;
+const resolveUrl = async ({ pathname, num, p, extra }, direction, isClamped = false) => {
+
+  /** 指定 num で確定したURLを組み立てて返す。extra は変更せず引き継ぐ */
+  const buildUrl = (illustUrl, resolvedNum, resolvedP) =>
+    illustUrl + '#' + serializeNavState({ pathname, num: resolvedNum, p: resolvedP, extra });
+
+  /** num / p を更新して再帰する */
+  const recurse = (nextNum, nextP, nextClamped = false) =>
+    resolveUrl({ pathname, num: nextNum, p: nextP, extra }, direction, nextClamped);
+
+  // ── id_list モード ──────────────────────────────────────────────────────
+  if (extra.id_list != null) {
+    const ids = extra.id_list.split(',');
+    if (num < 0)           return direction > 0 ? recurse(0,            1) : undefined;
+    if (num >= ids.length) return direction < 0 ? recurse(ids.length-1, 1) : undefined;
+    return `https://sp.nijie.info/view.php?id=${ids[num]}#` + serializeNavState({ pathname, num, p, extra });
   }
 
-  if (p < 1) return direction > 0 ? resolveUrl({ pathname, num: 0, p: 1, ...rest }, direction) : undefined;
-  if (!isClamped && num < 0) return resolveUrl({ pathname, num, p: p - 1, ...rest }, direction, true);
+  // ── ページ境界チェック ──────────────────────────────────────────────────
+  if (p < 1)                     return direction > 0 ? recurse(0, 1) : undefined;
+  if (!isClamped && num < 0)     return recurse(num, p - 1, true);
 
-  // okazu モード
+  // ── okazu モード ────────────────────────────────────────────────────────
   if (pathname === '/okazu.php') {
-    if (num >= 10) return resolveUrl({ pathname, num: 0, p: p + 1, ...rest }, direction);
+    if (num >= 10) return recurse(0, p + 1);
 
     const postParams = new URLSearchParams({
-      type: rest.type ?? 'recent_now',
+      type: extra.type ?? 'recent_now',
       num:  Math.max(p - 1, 0) * 10,
     });
-    if (rest.start_time && rest.end_time) {
-      postParams.set('start_time', rest.start_time);
-      postParams.set('end_time',   rest.end_time);
+    if (extra.start_time && extra.end_time) {
+      postParams.set('start_time', extra.start_time);
+      postParams.set('end_time',   extra.end_time);
     }
 
     const hrefs = await fetchOkazuHrefs(postParams.toString());
-    if (hrefs.length === 0) return direction < 0 ? resolveUrl({ pathname, num: 9, p: p - 1, ...rest }, direction, true) : undefined;
-    if (isClamped) num = hrefs.length - 1;
-    if (num >= hrefs.length) return resolveUrl({ pathname, num: 0, p: p + 1, ...rest }, direction);
+    if (hrefs.length === 0)  return direction < 0 ? recurse(9, p - 1, true) : undefined;
+    if (isClamped)           num = hrefs.length - 1;
+    if (num >= hrefs.length) return recurse(0, p + 1);
 
-    const params = new URLSearchParams({ pathname, p, _num: num, ...rest });
-    return hrefs[num] + '#' + params.toString();
+    return buildUrl(hrefs[num], num, p);
   }
 
-  // 通常リストページモード
-  const listParams = new URLSearchParams({ pathname, p, ...rest });
-  listParams.delete('_num');
-  const listUrl = pathname + '?' + listParams.toString();
-  const hrefs   = await fetchListHrefs(listUrl);
-  if (hrefs.length === 0) return direction < 0 ? resolveUrl({ pathname, num, p: p - 1, ...rest }, direction, true) : undefined;
-  if (isClamped) num = hrefs.length - 1;
-  if (num >= hrefs.length) return resolveUrl({ pathname, num: 0, p: p + 1, ...rest }, direction);
+  // ── 通常リストページモード ──────────────────────────────────────────────
+  const listParams = new URLSearchParams({ p, ...extra });
+  const listUrl    = pathname + '?' + listParams.toString();
+  const hrefs      = await fetchListHrefs(listUrl);
+  if (hrefs.length === 0)  return direction < 0 ? recurse(num, p - 1, true) : undefined;
+  if (isClamped)           num = hrefs.length - 1;
+  if (num >= hrefs.length) return recurse(0, p + 1);
 
-  const params = new URLSearchParams({ pathname, p, _num: num, ...rest });
-  return hrefs[num] + '#' + params.toString();
-};
-
-/**
- * URLハッシュ文字列を解析して {@link NavState} を返す。
- * ハッシュが不正・情報不足の場合は `null` を返す。
- *
- * @param {string} hash - `location.hash` の値 (`#` を含む文字列)
- * @returns {NavState|null}
- */
-const parseNavState = (hash) => {
-  const params   = new URLSearchParams(hash.slice(1));
-  const pathname = params.get('pathname');
-  const _num     = params.get('_num');
-  const p        = params.get('p');
-  if (!pathname || _num == null) return null;
-
-  /** @type {NavState} */
-  const state = { pathname, num: +_num, p: p != null ? +p : 1 };
-  for (const [k, v] of params) {
-    if (!(k in state)) state[k] = v;
-  }
-  return state;
+  return buildUrl(hrefs[num], num, p);
 };
 
 /**
@@ -286,7 +305,7 @@ const expandViewPopup = async () => {
     });
   };
 
-  topIllust.addEventListener('load',          loadPopupImages);
+  topIllust.addEventListener('load',           loadPopupImages);
   topIllust.addEventListener('loadedmetadata', loadPopupImages);
 
   // サムネイルクリックで展開できるようラベルで包む
