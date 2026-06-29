@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      4.0.0
+// @version      4.0.1
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -73,7 +73,7 @@ const setStyle = () => {
       content: " (" counter(num) " / " counter(total) ")";
     }
 
-    #manga, #filter { display: none; }
+    #manga, #filter { display: none !important; }
   `;
 };
 
@@ -257,6 +257,7 @@ const rewriteNavLinks = async () => {
     const url = state
       ? await resolveUrl({ ...state, num: state.num + direction }, direction)
       : fallback;
+    console.log(`rewriteNavLinks: ${id} -> ${url ?? 'undefined'}`);
     if (!url) return;
 
     btn.innerHTML = `<a id="${id}" href="${url}"><i class="fa-solid fa-chevron-${iconDir}"></i></a>`;
