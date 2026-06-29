@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nijie-exview
 // @namespace    https://github.com/kou003/
-// @version      3.13.7
+// @version      4.0.0
 // @description  nijie-exview
 // @author       kou003
 // @match        https://sp.nijie.info/view.php?id=*
@@ -11,37 +11,31 @@
 // @run-at       document-start
 // ==/UserScript==
 
-{
-  'use strict';
-  const setStyle = () => {
-    document.head.appendChild(document.createElement('style')).textContent = `
-    #bmWindow {
-      position: fixed;
-      left: 0;
-      bottom: 0;
-      border: none;
-      width: 100%;
-      height: 0;
-      z-index: 10;
-      text-align: right;
-      font-size: 2rem;
-      color: white;
-      background-color: #D7712D;
-      transition: all 300ms;
-    }
-    #bmWindow.open {
-      height: 80%;
-    }
-    #bmWindow i {
-      margin: 0.1em;
-    }
-    #bmWindow iframe {
-      width: 100%;
-      height: 100%;
-      border: solid 2px #D7712D;
-      box-sizing: border-box;
-    }
-    
+'use strict';
+
+// ─── 型定義 ──────────────────────────────────────────────────────────────────
+
+/**
+ * ハッシュ経由でページ間を移動するときに使うナビゲーション状態。
+ * URLハッシュを `new URLSearchParams(hash.slice(1))` で解析した結果に対応する。
+ *
+ * @typedef {Object} NavState
+ * @property {string}      pathname  - 遷移元リストページのパス名 (例: '/illust_list.php', '/okazu.php')
+ * @property {number}      num       - リストページ内でのイラストの位置 (0始まり)
+ * @property {number}      p         - リストページのページ番号 (1始まり)
+ * @property {string}      [id_list] - カンマ区切りのイラストID一覧 (id_listモード時のみ)
+ * @property {string}      [type]    - okazuページの種別 (okazuモード時のみ)
+ * @property {string}      [start_time] - okazu絞り込み開始日時 (okazuモード時のみ)
+ * @property {string}      [end_time]   - okazu絞り込み終了日時 (okazuモード時のみ)
+ */
+
+// ─── スタイル ────────────────────────────────────────────────────────────────
+
+/**
+ * スクリプトが使用するCSSをページに挿入する。
+ */
+const setStyle = () => {
+  document.head.appendChild(document.createElement('style')).textContent = `
     #view-image-block #illust img {
       max-width: 100%;
     }
@@ -56,7 +50,7 @@
     .popup_illust {
       display: none;
     }
-    #exView:checked~#illust .ex-close {
+    #exView:checked ~ #illust .ex-close {
       display: block;
     }
     #exView:checked ~ #illust .popup_illust {
@@ -79,480 +73,274 @@
       content: " (" counter(num) " / " counter(total) ")";
     }
 
-    #manga,#filter{display:none}
+    #manga, #filter { display: none; }
+  `;
+};
 
-    #toggle-rev input {
-      display: none;
-    }
-    #toggle-rev div {
-      padding-top: 5px;
-    }
-    #toggle-rev div::before {
-      content: "";
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 2px solid gray;
-      border-radius: 50%;
-      background-color: white;
-      box-sizing: border-box;
-    }
-    #toggle-rev input:checked ~ div::before {
-      content: "";
-      border: 2px solid white;
-      background-color: gray;
-    }
-    .paging-container .left, .paging-container .right {
-      float: none;
-      width: auto;
-    }
+// ─── ユーティリティ ──────────────────────────────────────────────────────────
 
-    .list-icon {
-      float: left;
-      font-size: 30px;
-      margin: 2px;
-    }
-    `
+/**
+ * HTML文字列から最初の要素を生成して返す。
+ *
+ * @param {string} html - 生成する要素のHTML文字列
+ * @returns {Element}
+ */
+const createElement = (() => {
+  const template = document.createElement('template');
+  return (html) => {
+    template.innerHTML = html;
+    return template.content.firstElementChild;
+  };
+})();
+
+/**
+ * 指定URLのHTMLをsessionStorageにキャッシュしながら取得し、DOMとして返す。
+ *
+ * @param {string} url - 取得先URL
+ * @returns {Promise<Document>}
+ */
+const fetchDom = async (url) => {
+  const cached = sessionStorage.getItem(url);
+  const html   = cached ?? await fetch(url).then((r) => r.text());
+  if (!cached) sessionStorage.setItem(url, html);
+  return new DOMParser().parseFromString(html, 'text/html');
+};
+
+// ─── URLハッシュによるナビゲーションリンクの書き換え ─────────────────────────
+
+/**
+ * 通常リストページからイラストページのURL一覧を取得する。
+ *
+ * @param {string} listPageUrl - リストページの完全URL
+ * @returns {Promise<string[]>} イラストページURLの配列
+ */
+const fetchListHrefs = async (listPageUrl) => {
+  const doc = await fetchDom(listPageUrl);
+  return [...doc.querySelectorAll('.illust-layout')]
+    .map((layout) => layout.parentElement)
+    .filter((a) => a.tagName === 'A')
+    .map((a) => a.href);
+};
+
+/**
+ * okazuページからイラストページのURL一覧をAjaxで取得する。
+ *
+ * @param {string} postBody - `application/x-www-form-urlencoded` 形式のリクエストボディ
+ * @returns {Promise<string[]>} イラストページURLの配列
+ */
+const fetchOkazuHrefs = async (postBody) => {
+  const response = await fetch('https://sp.nijie.info/php/ajax/get_okazu.php', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'x-requested-with': 'XMLHttpRequest',
+    },
+    body: postBody,
+  });
+  const json = await response.json();
+  const doc  = new DOMParser().parseFromString(json.data, 'text/html');
+  return [...doc.querySelectorAll('.okazu-layout .title a[href*="/view.php?id="]')]
+    .map((a) => a.href);
+};
+
+/**
+ * ナビゲーション状態と移動方向から遷移先URLを解決する。
+ * ページ末尾/先頭を超えた場合は隣のリストページへ折り返す。
+ *
+ * 動作モードはハッシュの内容で自動判別する:
+ * - `id_list` パラメータあり → id_listモード（リスト取得不要）
+ * - `pathname === '/okazu.php'`  → okazuモード（Ajax取得）
+ * - それ以外                    → 通常リストページモード
+ *
+ * @param {NavState} state      - 現在のナビゲーション状態
+ * @param {number}   direction  - 移動方向 (+1: 次, -1: 前)
+ * @param {boolean}  [isClamped=false]
+ *   `true` のとき、`num` が範囲外でも前後ページへの再帰を行わず、
+ *   そのページの末尾要素へクランプする。
+ *   ページ境界をまたぐ再帰呼び出し時に内部で使用する。
+ * @returns {Promise<string|undefined>} 遷移先URL。存在しない場合は `undefined`
+ */
+const resolveUrl = async ({ pathname, num, p, ...rest }, direction, isClamped = false) => {
+  // id_list モード: リストページへのアクセス不要
+  if (rest.id_list != null) {
+    const ids = rest.id_list.split(',');
+    if (num < 0)           return direction > 0 ? resolveUrl({ pathname, num: 0,            p: 1, ...rest }, direction) : undefined;
+    if (num >= ids.length) return direction < 0 ? resolveUrl({ pathname, num: ids.length-1, p: 1, ...rest }, direction) : undefined;
+    const params = new URLSearchParams({ pathname, num, p, id_list: rest.id_list, _num: num });
+    return `https://sp.nijie.info/view.php?id=${ids[num]}#${params.toString()}`;
   }
 
-  const RingBuffer = class {
-    constructor(n=1, defaultFanc, beforeDelete) {
-      this.buf = new Array(n);
-      this.map = new Map();
-      this.cur = 0;
-      this.defaultFanc = defaultFanc;
-      this.beforeDelete = beforeDelete;
-    }
+  if (p < 1) return direction > 0 ? resolveUrl({ pathname, num: 0, p: 1, ...rest }, direction) : undefined;
+  if (!isClamped && num < 0) return resolveUrl({ pathname, num, p: p - 1, ...rest }, direction, true);
 
-    get(key) {
-      if (this.map.has(key)) {
-        return this.map.get(key);
-      }
-      if (typeof this.defaultFanc == 'function') {
-        const value = this.defaultFanc(key);
-        if (value instanceof Promise) {
-          return value.then(v=>this.set(key, v)).then(()=>this.get(key));
-        } else {
-          this.set(key, value);
-          return this.get(key);
-        }
-      }
-      return;
-    }
+  // okazu モード
+  if (pathname === '/okazu.php') {
+    if (num >= 10) return resolveUrl({ pathname, num: 0, p: p + 1, ...rest }, direction);
 
-    set(key, value) {
-      if (this.map.has(key)) {
-        this.map.set(key, value);
-        return;
-      }
-      const old = this.buf[this.cur];
-      if (typeof this.beforeDelete == 'function') {
-        const res = this.beforeDelete(old, this.get(old));
-        if (res instanceof Promise) return res.then(()=>this.overSet(key, value))
-      }
-      return this.#overSet(key, value);
-    }
-
-    #overSet(key, value) {
-      const old = this.buf[this.cur];
-      this.map.delete(old);
-      this.buf[this.cur] = key;
-      this.cur = (this.cur + 1) % this.buf.length;
-      this.map.set(key, value);
-    }
-
-    has(key) {
-      return this.map.has(key);
-    }
-    
-  }
-
-  Object.defineProperty(HTMLMediaElement.prototype, 'playing', {
-    get: function(){
-        return !!(this.currentTime > 0 && !this.paused && !this.ended && this.readyState > 2);
-    }
-  })
-
-  const element = {
-    template: document.createElement('template'),
-    create: function (string) {
-      this.template.innerHTML = string;
-      return this.template.content.firstElementChild;
-    }
-  }
-
-  const setSwipe = (document) => {
-    let startX;
-    let startY;
-    let moveX;
-    let moveY;
-    let startT;
-    let moveT;
-    const dist = 80;
-    const maxSlope = 0.5;
-    const minSpeed = 0.5;
-    const illust = document.querySelector('#illust');
-    if (!illust) return;
-    illust.querySelectorAll('.lazy').forEach(e=>e.classList.remove('lazy'));
-    illust.addEventListener("touchstart", event => {
-      startX = event.touches[0].clientX;
-      startY = event.touches[0].clientY;
-      startT = event.timeStamp;
+    const postParams = new URLSearchParams({
+      type: rest.type ?? 'recent_now',
+      num:  Math.max(p - 1, 0) * 10,
     });
-    illust.addEventListener("touchmove", event => {
-      moveX = event.changedTouches[0].clientX;
-      moveY = event.changedTouches[0].clientY;
-      moveT = event.timeStamp;
-    });
-    illust.addEventListener("touchend", event => {
-      let diffX = moveX - startX;
-      let diffY = moveY - startY;
-      let diffT = moveT - startT;
-      let slope = Math.abs(diffY / diffX);
-      let speed = Math.abs(diffX / diffT);
-      console.log(`dx: ${diffX}, dy: ${diffY}, slope: ${slope}, speed: ${speed}`);
-      if (Math.abs(diffX) > dist && slope < maxSlope && speed > minSpeed) {
-        console.log('swiped');
-        window.document.querySelector(diffX > 0 ? "#next_illust" : "#prev_illust").click();
-      }
-    });
+    if (rest.start_time && rest.end_time) {
+      postParams.set('start_time', rest.start_time);
+      postParams.set('end_time',   rest.end_time);
+    }
+
+    const hrefs = await fetchOkazuHrefs(postParams.toString());
+    if (hrefs.length === 0) return direction < 0 ? resolveUrl({ pathname, num: 9, p: p - 1, ...rest }, direction, true) : undefined;
+    if (isClamped) num = hrefs.length - 1;
+    if (num >= hrefs.length) return resolveUrl({ pathname, num: 0, p: p + 1, ...rest }, direction);
+
+    const params = new URLSearchParams({ pathname, p, _num: num, ...rest });
+    return hrefs[num] + '#' + params.toString();
   }
 
-  const dom = url => fetch(url).then(r => r.text()).then(t => {
-    t = t.replaceAll('http://pic01','https://pic01');
-    let d = new DOMParser().parseFromString(t, 'text/html');
-    d.body.dataset.title = d.title;
-    d.body.dataset.href = url;
-    d.body.dataset.scrollY = 105;
-    d.querySelectorAll('.illust-image img').forEach(img=>img.loading='lazy');
-    return d;
+  // 通常リストページモード
+  const listParams = new URLSearchParams({ pathname, p, ...rest });
+  listParams.delete('_num');
+  const listUrl = pathname + '?' + listParams.toString();
+  const hrefs   = await fetchListHrefs(listUrl);
+  if (hrefs.length === 0) return direction < 0 ? resolveUrl({ pathname, num, p: p - 1, ...rest }, direction, true) : undefined;
+  if (isClamped) num = hrefs.length - 1;
+  if (num >= hrefs.length) return resolveUrl({ pathname, num: 0, p: p + 1, ...rest }, direction);
+
+  const params = new URLSearchParams({ pathname, p, _num: num, ...rest });
+  return hrefs[num] + '#' + params.toString();
+};
+
+/**
+ * URLハッシュ文字列を解析して {@link NavState} を返す。
+ * ハッシュが不正・情報不足の場合は `null` を返す。
+ *
+ * @param {string} hash - `location.hash` の値 (`#` を含む文字列)
+ * @returns {NavState|null}
+ */
+const parseNavState = (hash) => {
+  const params   = new URLSearchParams(hash.slice(1));
+  const pathname = params.get('pathname');
+  const _num     = params.get('_num');
+  const p        = params.get('p');
+  if (!pathname || _num == null) return null;
+
+  /** @type {NavState} */
+  const state = { pathname, num: +_num, p: p != null ? +p : 1 };
+  for (const [k, v] of params) {
+    if (!(k in state)) state[k] = v;
+  }
+  return state;
+};
+
+/**
+ * ページ内のナビゲーションボタン（前/次）のhrefをハッシュ情報に基づいて書き換える。
+ * ハッシュが存在しない場合は元のリンクをフォールバックとして使用する。
+ * リンクは通常の `<a>` として機能し、クリックで普通にページ遷移する。
+ */
+const rewriteNavLinks = async () => {
+  const viewNav = document.querySelector('.view-nav ul');
+  if (!viewNav) return;
+
+  const state = parseNavState(location.hash);
+
+  /** @type {{ direction: number, selector: string, iconDir: string, id: string }[]} */
+  const navDefs = [
+    { direction: -1, selector: 'li:first-of-type', iconDir: 'left',  id: 'next_illust' },
+    { direction: +1, selector: 'li:last-of-type',  iconDir: 'right', id: 'prev_illust' },
+  ];
+
+  await Promise.all(navDefs.map(async ({ direction, selector, iconDir, id }) => {
+    const btn       = viewNav.querySelector(selector);
+    const existingA = btn.querySelector('a:not(.do)');
+    const fallback  = existingA?.href ?? null;
+
+    btn.innerHTML = '\u00a0';
+
+    const url = state
+      ? await resolveUrl({ ...state, num: state.num + direction }, direction)
+      : fallback;
+    if (!url) return;
+
+    btn.innerHTML = `<a id="${id}" href="${url}"><i class="fa-solid fa-chevron-${iconDir}"></i></a>`;
+  }));
+};
+
+// ─── view_popup 展開 ──────────────────────────────────────────────────────────
+
+/**
+ * view_popup.php を読み込み、全画像をインラインに展開表示できるようにする。
+ *
+ * - サムネイルをクリックすると全画像が展開される（CSSチェックボックストリック）
+ * - 各画像をクリックすると次の画像へスクロールする
+ * - トップ画像の読み込み完了後に popup_illust の src を設定する
+ * - 6枚目以降は `loading="lazy"` を付与する
+ */
+const expandViewPopup = async () => {
+  const viewCenter = document.querySelector('#view-center-block');
+  const illust     = viewCenter.querySelector('#illust');
+  const topIllust  = illust.querySelector('[illust_id]') ?? illust.querySelector('a>img');
+
+  /** popup_illust の src を dataset.src から復元して読み込みを開始する */
+  const loadPopupImages = () => {
+    illust.querySelectorAll('.popup_illust').forEach((img) => {
+      if (img.dataset.src) img.src = img.dataset.src;
+    });
+  };
+
+  topIllust.addEventListener('load',          loadPopupImages);
+  topIllust.addEventListener('loadedmetadata', loadPopupImages);
+
+  // サムネイルクリックで展開できるようラベルで包む
+  const exLabel   = createElement('<label for="exView" />');
+  const illustAnk = illust.querySelector(':scope>p>a');
+  illustAnk.onclick = (e) => { exLabel.click(); e.preventDefault(); };
+  exLabel.appendChild(illustAnk);
+  exLabel.addEventListener('click', loadPopupImages);
+  illust.querySelector(':scope>p').appendChild(exLabel);
+
+  // チェックボックスと「開く」ラベルを挿入する
+  const exViewCheck = createElement('<input id="exView" type="checkbox" disabled>');
+  viewCenter.insertAdjacentElement('afterbegin', exViewCheck);
+  illust.appendChild(createElement('<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i></label>'));
+
+  // view_popup.php から全画像を取得して追加する
+  const popupUrl = location.origin
+    + location.pathname.replace('view.php', 'view_popup.php')
+    + location.search;
+  const popupDoc = await fetchDom(popupUrl);
+  const imgs     = [...popupDoc.querySelectorAll('.popup_illust')];
+
+  illust.style.setProperty('--total', imgs.length);
+
+  imgs.forEach((img, i) => {
+    if (i > 5) img.loading = 'lazy';
+    // トップ画像の読み込みが終わるまで popup_illust は src を空にしておく
+    img.dataset.src = img.src;
+    if (!topIllust.complete && !topIllust.readyState) img.src = '';
+
+    illust.appendChild(img);
+    img.addEventListener('click', () => imgs[(i + 1) % imgs.length].scrollIntoView());
+    illust.appendChild(createElement('<label class="ex-close" for="exView"><i class="fa fa-angle-up"></i></label>'));
   });
 
-  const exBookmark = (document) => {
-    const bmwin = document.body.appendChild(element.create('<div id="bmWindow"><i class="fa fa-window-close"></i><iframe/></div>'));
-    const bmframe = bmwin.querySelector('iframe');
-    bmwin.querySelector('i').addEventListener('click', e => {
-      bmwin.classList.remove('open');
-      bmframe.src = '';
-      changePage(window.document.body.dataset.href, 'reload');
-    });
-    const bmButton = document.querySelector('#bookmark_button a');
-    bmButton.removeAttribute('onclick');
-    bmButton.addEventListener('click', e => {
-      const p = bmButton.querySelector('p');
-      if (p.id == 'bookmark') {
-        if (confirm('ブックマークに追加してもよろしいですか？')) {
-          fetch(bmButton.href).then(changePage(window.document.body.dataset.href, 'reload'));
-        }
-      } else {
-        bmframe.src = bmButton.href;
-        bmwin.classList.add('open');
-      }
-      e.preventDefault();
-    });
-  }
+  exViewCheck.addEventListener('change', () => {
+    exViewCheck.checked ? illust.scrollIntoView() : scroll(0, 0);
+  });
+  exViewCheck.disabled = false;
+};
 
-  const loadScript = document => {
-    let g = Object.assign((e, t) => (typeof e == 'function') ? e() : $(e, document.body), $);
-    scriptFunc.forEach(f => f(document, g));
-  }
+// ─── エントリポイント ─────────────────────────────────────────────────────────
 
-  const reloadTriger = document => {
-    const TIMEOUT = 1000;
-    let tid = 0;
-    const element = document.querySelector('#head-left>h1');
-    if (!element) return;
-    element.addEventListener('touchstart', e=>{
-      clearTimeout(tid);
-      tid = setTimeout(()=>confirm('リロードしますか?')&&changePage(location.href, 'reload'), TIMEOUT);
-    });
-    element.addEventListener('touchend', e=>clearTimeout(tid));
-  }
+/**
+ * スクリプトのメイン処理。iframe内では動作しない。
+ */
+const main = () => {
+  if (window.parent !== window) return;
+  setStyle();
+  expandViewPopup();
+  rewriteNavLinks();
+};
 
-  const resolveUrl = async (params, pathname, num, p, d, cd) => {
-    if (params.has('id_list')) {
-      const ids = params.get('id_list').split(',');
-      if (num < 0) return (d > 0) ? resolveUrl(params, pathname, 0, 1, d) : void(0);
-      if (num >= ids.length) return (d < 0) ? resolveUrl(params, pathname, ids.length-1, 1, d) : void(0);
-      params.set('_num', num);
-      return `https://sp.nijie.info/view.php?id=${ids[num]}#${params.toString()}`;
-    }
-
-    if (p < 1) return (d > 0) ? resolveUrl(params, pathname, 0, 1, d) : void(0);
-    if (!cd && num < 0) return resolveUrl(params, pathname, num, p-1, d, true);
-
-    if (pathname == '/okazu.php') {
-      if (num >= 10) return resolveUrl(params, pathname, 0, p+1, d);
-      const okazuType = params.get('type') || 'recent_now';
-      const okazuNum = Math.max(p - 1, 0) * 10;
-      const startTime = params.get('start_time');
-      const endTime = params.get('end_time');
-      const pureParams = new URLSearchParams({
-        type: okazuType,
-        num: okazuNum
-      });
-      if (startTime && endTime) {
-        pureParams.set('start_time', startTime);
-        pureParams.set('end_time', endTime);
-      }
-      const query = pureParams.toString();
-      const hrefs = await okazuBuffer.get(query);
-      params.set('p', p);
-      if (hrefs.length == 0) return (d < 0) ? resolveUrl(params, pathname, 9, p-1, d, true) : void(0);
-      if (!!cd) num = hrefs.length - 1;
-      if (num >= hrefs.length) return resolveUrl(params, pathname, 0, p+1, d);
-      console.log(hrefs);
-      params.set('_num', num);
-      const href = hrefs[num] + '#' + params.toString();
-      return href;
-    }
-    params.set('p', p);
-    const pureParams = new URLSearchParams(params);
-    pureParams.delete('pathname');
-    pureParams.delete('_num');
-    const url = pathname + '?' + pureParams.toString();
-    const hrefs = await listBuffer.get(url);
-    if (hrefs.length == 0) return (d < 0) ? resolveUrl(params, pathname, num, p-1, d, true) : void(0)
-    if (!!cd) num = hrefs.length - 1;
-    if (num >= hrefs.length) return resolveUrl(params, pathname, 0, p+1, d);
-    params.set('_num', num);
-    const href = hrefs[num] + '#' + params.toString();
-    return href;
-  }
-
-  const revUrl = async (hash, d, url) => {
-    const params = new URLSearchParams(hash.replace('#','?'));
-    const pathname = params.get('pathname');
-    const num = params.get('_num');
-    const p = params.get('p') || 1;
-    if (!pathname || num == null || p == null) return url;
-    return resolveUrl(params, pathname, +num+d, +p, d);
-  }
-
-  const updateToggle = e => {
-    const t = window.document.querySelector('#toggle-rev>input').checked;
-    localStorage['toggle-rev'] = +t;
-    window.document.querySelectorAll('.gallery-link').forEach(a=>a.href=a.dataset[t?'hash':'origin']);
-  }
-
-  const addHash = document => {
-    document.querySelector('#head-right').insertAdjacentHTML('afterbegin', `<label id="toggle-rev" class="float-left"><input type="checkbox"><div></div></label>`);
-    const toggle = document.querySelector('#toggle-rev>input');
-    console.log(toggle);
-    toggle.checked = !!+localStorage['toggle-rev'];
-    toggle.addEventListener('click', updateToggle);
-
-    const idList = [...document.querySelectorAll('#nuita_reco_gallery .illust-layout')].map(il=>il.getAttribute('illust_id'));
-    const location = new URL(document.body.dataset.href);
-    const params = new URLSearchParams();
-    params.set('pathname',location.pathname);
-    params.set('id_list', idList);
-    document.querySelectorAll('#nuita_reco_gallery a[itemprop]').forEach((a,i)=>{
-      params.set('_num', i);
-      const url = new URL(a.href);
-      url.hash = params.toString();
-      a.classList.add('gallery-link');
-      a.dataset.origin = a.href;
-      a.dataset.hash = url.toString();
-      //a.target = '_new';
-    });
-  }
-
-  const addListPageButton = document => {
-    const location = new URL(document.body.dataset.href);
-    const params = new URLSearchParams(location.hash.replace('#', '?'));
-    const pathname = params.get('pathname');
-    params.delete('pathname');
-    params.delete('_num');
-    params.delete('id_list');
-    const illustId = new URLSearchParams(location.search).get('id');
-    const href = `${pathname}?${params.toString()}#${illustId}`;
-    document.querySelector('#menu')?.insertAdjacentHTML('afterend', `<div class="list-icon"><a href="${href}"><i class="fa-solid fa-table-cells"></i></a></div>`);
-  }
-
-  const exView = async (document) => {
-    if (document.body.dataset.extend) return;
-    document.body.dataset.extend = true;
-    setSwipe(document);
-    loadScript(document);
-    exBookmark(document);
-    reloadTriger(document);
-    addHash(document);
-    addListPageButton(document);
-    document.querySelectorAll('#sub_button a').forEach(a => a.target = '_new');
-    const location = new URL(document.body.dataset.href);
-    location.hash = '';
-    const viewCenter = document.body.querySelector('#view-center-block');
-
-    const illust = viewCenter.querySelector('#illust');
-    const topIllust = illust.querySelector('[illust_id]') || illust.querySelector('a>img');
-    const loadPopups = async e=>{
-      illust.querySelectorAll('.popup_illust').forEach(img=>{
-        const src = img.dataset.src;
-        if (src) {img.src = src; }
-      })
-    }
-    console.log(topIllust);
-    topIllust.addEventListener('load', loadPopups);
-    topIllust.addEventListener('loadedmetadata', loadPopups);
-    const exLabel = element.create('<label for="exView" />');
-    const illustAnk = illust.querySelector(':scope>p>a');
-    illustAnk.onclick = e => {exLabel.click(); return e.preventDefault()};
-    exLabel.appendChild(illustAnk);
-    exLabel.addEventListener('click', e=>{
-      const v=exLabel.querySelector('video');
-      if (v && !v.playing()) v.play();
-      loadPopups();
-    });
-    illust.querySelector(':scope>p').appendChild(exLabel);
-
-    const viewTitle = document.querySelector('.view-title');
-    const titleAnker = document.createElement('a');
-    titleAnker.href = location.href;
-    titleAnker.target = '_blank';
-    titleAnker.appendChild(viewTitle.firstChild);
-    viewTitle.appendChild(titleAnker);
-    
-    const exViewCheck = element.create('<input id="exView" type="checkbox" disabled>');
-    viewCenter.insertAdjacentElement('afterbegin', exViewCheck);
-    const exOpen = element.create('<label class="ex-open" for="exView"><i class="fa fa-angle-down"></i><label>');
-    const exClose = element.create('<label class="ex-close" for="exView"><i class="fa fa-angle-up"></i><label>');
-    illust.appendChild(exOpen);
-
-    const popup_url = location.href.replace('view.php', 'view_popup.php');
-    dom(popup_url).then(doc => {
-      const imgs = doc.querySelectorAll('.popup_illust');
-      illust.style.setProperty('--total', imgs.length);
-      imgs.forEach((img, i) => {
-        if (i>5) img.loading='lazy';
-        img.dataset.src = img.src;
-        if (!topIllust.complete && !topIllust.readyState) {
-          img.src = '';
-        }
-        illust.appendChild(img);
-        img.addEventListener('click', e => imgs[(i + 1) % imgs.length].scrollIntoView());
-        illust.appendChild(exClose.cloneNode(true));
-      });
-      exViewCheck.onchange = e => exViewCheck.checked ? illust.scrollIntoView() : scroll(0, 0);
-      exViewCheck.disabled = false;
-    });
-    return document;
-  }
-
-  const exbody = async url => {
-    const d = await dom(url).then(exView);
-    const body = d.body;
-    body.remove();
-    return body;
-  }
-
-  const changePage = async (href, mode='push') => {
-    /**mode: [push, pop, reload] */
-    console.log('changePage: ', href);
-    console.log('mode:', mode);
-    if (mode == 'reload') bodyBuffer.set(href, await exbody(href));
-    document.body = await bodyBuffer.get(href);
-    illustBuffer.get(href);
-    const dataset = document.body.dataset;
-    document.title = dataset.title;
-    if (mode == 'push') {
-      history.pushState({}, dataset.title, dataset.href);
-    } else {
-      history.replaceState({}, dataset.title, dataset.href);
-    }
-    scroll(0, dataset.scrollY);
-    updateToggle();
-    const v = document.querySelector('#illust video');
-    if (v) v.play();
-
-    console.log(document.location.href);
-    const viewNav = document.querySelector('.view-nav ul');
-    const location = new URL(document.body.dataset.href);
-    console.log(document.title);
-    Promise.all([[-1, 'li:first-of-type', 'left', 'next'], [+1, 'li:last-of-type', 'right', 'prev']].map(async args=>{
-      const [d, q, t, u] = args;
-      const btn = viewNav.querySelector(q);
-      const ank = btn.querySelector('a:not(.do)');
-      const oriUrl = ank ? ank.href : null;
-      btn.innerHTML = '\u00a0';
-      const url = await revUrl(location.hash, d, oriUrl);
-      if (url) {
-        btn.innerHTML = `<a id="${u}_illust" href="${url}"><i class="fa-solid fa-chevron-${t}"></i></a>`;
-        const a = btn.firstChild;
-        a.onclick = e => {
-            console.log('clicked');
-            changePage(e.currentTarget.href);
-            return !!e.preventDefault();
-          };
-        illustBuffer.get(url);
-      }
-      }));
-  }
-
-  const scriptFilter = (src, t) => {
-    if (src.match('view_popup.js')) {
-      t = '';
-    } else if (src.match('common.js')) {
-      t = t.replace(/setTimeout[\s\S]*?}, 1\);/, '');
-      t = t.replace(/,\s*menuWidth = burger.outerWidth\(\)/, '');
-      t = t.replaceAll('menuWidth', 'burger.outerWidth()');
-      t = t.replace('function getUrlVars()', 'window.getUrlVars = function getUrlVars()')
-      t = t.replace(`window.location.href.slice(window.location.href.indexOf('?') + 1)`,`window.location.search.slice(1)`);
-    } else if (src.match('view.js')) {
-      t = t.replace(/function setSwipe[\s\S]*setSwipe\(\);/, '');
-      t = t.replace(/nuita_lock == true/, 'nuita_lock||!confirm("抜いた?")');
-      t = t.replace('var query = getUrlVars();', '');
-      t = t.replaceAll('query', 'window.getUrlVars()');
-    }
-    return t;
-  }
-
-  const main = async () => {
-    if (window.parent != window) return;
-    setStyle();
-    window.scriptFunc = await Promise.all([...document.querySelectorAll('script[src]')]
-      .filter(s=>s.src.startsWith('https://sp.nijie.info/')).map(async s => {
-      const t = await fetch(s.src).then(r => r.text()).then(t=>scriptFilter(s.src, t));
-      return new Function('document', '$', t);
-    }));
-    window.bodyBuffer = new RingBuffer(50, exbody);
-    window.illustBuffer = new RingBuffer(10, async href => {
-      const body = await bodyBuffer.get(href);
-      const top = body.querySelector('#illust [illust_id]') || body.querySelector('#illust a>img');
-      const ele = document.createElement(top?top.tagName:'img');
-      ele.onload = e => console.log('illust loaded', href);
-      ele.src = top.src;
-      return ele;
-    });
-    window.listBuffer = new RingBuffer(3, async url => {
-      const d = await dom(url);
-      const hrefs = [...d.querySelectorAll('.illust-layout')]
-        .map(layout=>layout.parentElement)
-        .filter(a=>a.tagName=='A')
-        .map(a=>a.href);
-      return hrefs;
-    });
-    window.okazuBuffer = new RingBuffer(3, async params => {
-      const options = {
-        "method": "POST",
-        "headers": {
-          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-          "x-requested-with": "XMLHttpRequest"
-        },
-        "body": params
-      }
-      const json = await fetch('https://sp.nijie.info/php/ajax/get_okazu.php', options).then(r=>r.json());
-      const d = new DOMParser().parseFromString(json.data, 'text/html');
-      const hrefs = [...d.querySelectorAll('.okazu-layout .title a[href*="/view.php?id="]')].map(a=>a.href);
-      return hrefs;
-    });
-    changePage(document.location.href, 'reload');
-    window.onscroll = e => document.body.dataset.scrollY = window.scrollY;
-    window.onpopstate = e => changePage(document.location.href, 'pop');
-  }
-  if (document.readyState == 'loading') {
-    document.addEventListener('DOMContentLoaded', main);
-  } else {
-    main();
-  }
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', main);
+} else {
+  main();
 }
